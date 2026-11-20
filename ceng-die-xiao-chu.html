@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>水果叠叠消</title>
+    <style>
+      :root{
+        --bg:#b9f08c;
+        --bg2:#a4e878;
+        --panel:#ffffff;
+        --panel-soft:#f2faf6;
+        --ink:#1d3a17;
+        --ink-soft:#4a6b35;
+        --line:#bfe3d2;
+        --mint:#2fbf8f;
+        --mint-deep:#149a6e;
+        --mint-dark:#0c6b4b;
+        --accent:#ff9f2e;
+        --danger:#e5484d;
+        --slot-bg:rgba(74,44,13,.42);
+        --wood-hi:#b57e3e;
+        --wood:#9c6530;
+        --wood-lo:#7c4c20;
+        --shadow:0 10px 30px rgba(46,84,20,.18);
+      }
+      @media (prefers-color-scheme: dark){
+        :root{
+          --bg:#1c4423;
+          --bg2:#15331a;
+          --panel:#143128;
+          --panel-soft:#173a2e;
+          --ink:#e9f6e4;
+          --ink-soft:#b3d1a4;
+          --line:#24503f;
+          --mint:#35c795;
+          --mint-deep:#23a678;
+          --mint-dark:#7fe3bd;
+          --slot-bg:rgba(30,17,4,.5);
+          --wood-hi:#8a5c28;
+          --wood:#744a1f;
+          --wood-lo:#573712;
+          --shadow:0 10px 30px rgba(0,0,0,.45);
+        }
+      }
+      *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+      html,body{margin:0;padding:0}
+      body{
+        font-family:"PingFang SC","Microsoft YaHei","Source Han Sans SC","Noto Sans SC",system-ui,sans-serif;
+        color:var(--ink);
+        background:
+          radial-gradient(130% 55% at 50% -8%, var(--bg2) 0%, transparent 60%),
+          var(--bg);
+        min-height:100vh;
+      }
+      /* scattered hand-drawn grass tufts over the whole meadow (original
+         little blade clusters, drawn as inline SVG strokes) */
+      body::before{
+        content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+        background-repeat:no-repeat;
+        background-image:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='40' viewBox='0 0 60 40'%3E%3Cg fill='none' stroke='%2379c74c' stroke-width='3.4' stroke-linecap='round'%3E%3Cpath d='M12 38 C10 26 6 20 2 14'/%3E%3Cpath d='M22 38 C22 24 20 16 16 8'/%3E%3Cpath d='M32 38 C34 25 38 18 44 12'/%3E%3Cpath d='M44 38 C45 28 48 22 54 18'/%3E%3C/g%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='30' viewBox='0 0 44 30'%3E%3Cg fill='none' stroke='%238bd45e' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M10 28 C9 19 6 14 3 10'/%3E%3Cpath d='M21 28 C21 17 20 11 17 5'/%3E%3Cpath d='M32 28 C33 19 36 14 41 10'/%3E%3C/g%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='40' viewBox='0 0 60 40'%3E%3Cg fill='none' stroke='%236db840' stroke-width='3.4' stroke-linecap='round'%3E%3Cpath d='M12 38 C10 26 6 20 2 14'/%3E%3Cpath d='M22 38 C22 24 20 16 16 8'/%3E%3Cpath d='M32 38 C34 25 38 18 44 12'/%3E%3Cpath d='M44 38 C45 28 48 22 54 18'/%3E%3C/g%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='30' viewBox='0 0 44 30'%3E%3Cg fill='none' stroke='%2379c74c' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M10 28 C9 19 6 14 3 10'/%3E%3Cpath d='M21 28 C21 17 20 11 17 5'/%3E%3Cpath d='M32 28 C33 19 36 14 41 10'/%3E%3C/g%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='40' viewBox='0 0 60 40'%3E%3Cg fill='none' stroke='%238bd45e' stroke-width='3.4' stroke-linecap='round'%3E%3Cpath d='M12 38 C10 26 6 20 2 14'/%3E%3Cpath d='M22 38 C22 24 20 16 16 8'/%3E%3Cpath d='M32 38 C34 25 38 18 44 12'/%3E%3Cpath d='M44 38 C45 28 48 22 54 18'/%3E%3C/g%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='30' viewBox='0 0 44 30'%3E%3Cg fill='none' stroke='%236db840' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M10 28 C9 19 6 14 3 10'/%3E%3Cpath d='M21 28 C21 17 20 11 17 5'/%3E%3Cpath d='M32 28 C33 19 36 14 41 10'/%3E%3C/g%3E%3C/svg%3E");
+        background-size:60px 40px, 44px 30px, 60px 40px, 44px 30px, 60px 40px, 44px 30px;
+        background-position:6% 12%, 88% 7%, 16% 46%, 93% 38%, 4% 78%, 84% 88%;
+      }
+      @media (prefers-color-scheme: dark){
+        body::before{opacity:.45}
+      }
+      .wrap{position:relative;z-index:1}
+      button,[role="button"]{min-height:2.25rem}
+      button{font-family:inherit;cursor:pointer}
+      /* phone-portrait first: the whole game is one full-height column —
+         top bar, board (flexes to whatever height is left), wooden tray,
+         prop buttons, stats, level picker — sized to a portrait handset
+         with no page scroll in normal play */
+      .wrap{
+        max-width:480px;margin:0 auto;
+        padding:10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+        height:100vh;height:100dvh;
+        display:flex;flex-direction:column;
+      }
+
+      /* ---------- top bar ---------- */
+      .topbar{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+      .icon-btn{
+        width:44px;height:44px;border-radius:12px;border:1px solid #1463ad;border-bottom:3px solid #0f5291;
+        background:linear-gradient(180deg,#3ea9f5,#1c7cd6);color:#fff;font-size:19px;line-height:1;
+        display:flex;align-items:center;justify-content:center;box-shadow:0 5px 12px rgba(20,90,160,.30);
+      }
+      .icon-btn:active{transform:scale(.94)}
+
+      /* ---------- compact stats strip ---------- */
+      .mini-stats{
+        display:flex;flex-wrap:wrap;gap:2px 12px;align-items:baseline;
+        margin-top:6px;padding:0 4px;font-size:11px;color:var(--ink-soft);
+      }
+      .mini-stats b{color:var(--ink);font-size:12px;font-variant-numeric:tabular-nums}
+
+      .progress{height:5px;background:var(--panel-soft);border:1px solid var(--line);border-radius:99px;margin-top:5px;overflow:hidden}
+      .progress i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--mint),var(--mint-deep));border-radius:99px;transition:width .35s ease}
+
+      /* ---------- board: the pile sits straight on the open meadow,
+         concentrated in the middle of the grass, no panel behind it ---- */
+      .board-zone{margin-top:2px;flex:1 1 auto;min-height:0;display:flex}
+      .stage{
+        position:relative;width:100%;height:100%;min-height:230px;margin:0 auto;
+        touch-action:manipulation;
+      }
+      .stage::before{
+        content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+        background-repeat:no-repeat;opacity:.85;
+        background-image:
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='40' viewBox='0 0 60 40'%3E%3Cg fill='none' stroke='%2379c74c' stroke-width='3.4' stroke-linecap='round'%3E%3Cpath d='M12 38 C10 26 6 20 2 14'/%3E%3Cpath d='M22 38 C22 24 20 16 16 8'/%3E%3Cpath d='M32 38 C34 25 38 18 44 12'/%3E%3Cpath d='M44 38 C45 28 48 22 54 18'/%3E%3C/g%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='30' viewBox='0 0 44 30'%3E%3Cg fill='none' stroke='%238bd45e' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M10 28 C9 19 6 14 3 10'/%3E%3Cpath d='M21 28 C21 17 20 11 17 5'/%3E%3Cpath d='M32 28 C33 19 36 14 41 10'/%3E%3C/g%3E%3C/svg%3E"),
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='40' viewBox='0 0 60 40'%3E%3Cg fill='none' stroke='%236db840' stroke-width='3.4' stroke-linecap='round'%3E%3Cpath d='M12 38 C10 26 6 20 2 14'/%3E%3Cpath d='M22 38 C22 24 20 16 16 8'/%3E%3Cpath d='M32 38 C34 25 38 18 44 12'/%3E%3Cpath d='M44 38 C45 28 48 22 54 18'/%3E%3C/g%3E%3C/svg%3E");
+        background-size:60px 40px, 44px 30px, 52px 35px;
+        background-position:4% 6%, 92% 16%, 78% 94%;
+      }
+      @media (prefers-color-scheme: dark){
+        .stage::before{opacity:.4}
+      }
+      /* no card, no box, no ground shadow: the plush fruit itself is the
+         tile. The artwork is a true cutout (RGBA webp, white backdrop
+         removed at build time), so only the fruit's own silhouette ever
+         shows — no rectangle at any angle, nothing pooled underneath it,
+         and the covered/dimmed state darkens fruit pixels only. A slight
+         per-fruit tilt keeps the heap from looking printed */
+      .tile{
+        position:absolute;
+        border:none;background:transparent;
+        display:flex;align-items:center;justify-content:center;
+        line-height:1;user-select:none;
+        transform:rotate(var(--rot,0deg));
+        transition:filter .15s ease, opacity .15s ease, transform .12s ease;
+        padding:0;
+      }
+      .tile .fruit-img{
+        position:relative;z-index:1;width:100%;height:100%;object-fit:contain;
+        pointer-events:none;
+        filter:saturate(1.05) contrast(1.01);
+      }
+      /* fruit in a slot sits small and centred, like its shape stamped
+         into the groove — not a full-size tile squeezed into the box */
+      .slot img{width:64%;height:84%;object-fit:contain;pointer-events:none;filter:saturate(1.05);opacity:.94}
+      div.tile{pointer-events:none}
+      .tile.free{cursor:pointer}
+      @media (hover:hover){
+        .tile.free:hover{transform:translateY(-4px) rotate(var(--rot,0deg)) scale(1.05)}
+      }
+      .tile.free:active{transform:translateY(2px) rotate(var(--rot,0deg)) scale(.96)}
+      .tile.covered{filter:brightness(.66) saturate(.55);cursor:not-allowed}
+      .tile:disabled{opacity:1;color:inherit}
+      .tile.pop{animation:pop .28s ease}
+      @keyframes pop{0%{transform:scale(.6) rotate(var(--rot,0deg))}60%{transform:scale(1.12) rotate(var(--rot,0deg))}100%{transform:scale(1) rotate(var(--rot,0deg))}}
+      .tile.gone{opacity:0;pointer-events:none;transform:scale(.4) rotate(var(--rot,0deg));transition:all .22s ease}
+
+      /* ---------- wooden trough under the meadow holding the 7 slots.
+         Original CSS-drawn wood: one smooth plank — warm gradient with
+         fine horizontal grain only. No vertical seams: they never lined
+         up with the 7 slot boxes and read as stray lines across the
+         tray. The slots themselves are one even grid row, so every
+         groove is the same size and on the same baseline.
+         Kept deliberately shallow — the whole block under the board
+         (tray, props, actions, stats, level picker) is only about a
+         fifth of the screen, so the fruit pile and the grass own the
+         rest ---- */
+      .tray-zone{margin-top:4px}
+      .tray-label{display:flex;justify-content:flex-end;align-items:baseline;font-size:11px;color:var(--ink-soft);margin:0 2px 3px}
+      .tray{
+        display:grid;grid-template-columns:repeat(7,1fr);gap:4px;align-items:stretch;
+        border:2px solid var(--wood-lo);border-radius:11px;padding:4px;
+        background:
+          linear-gradient(180deg, rgba(255,226,170,.28) 0%, rgba(255,255,255,0) 30%, rgba(0,0,0,.14) 78%, rgba(0,0,0,.26) 100%),
+          repeating-linear-gradient(0deg, rgba(90,52,14,.10) 0 2px, rgba(255,255,255,0) 2px 9px),
+          var(--wood);
+        box-shadow:
+          inset 0 2px 0 rgba(255,230,180,.4),
+          inset 0 -7px 12px rgba(52,29,4,.35),
+          0 6px 14px rgba(46,84,20,.22);
+      }
+      .slot{
+        aspect-ratio:1/0.72;border-radius:8px;background:var(--slot-bg);
+        border:2px solid rgba(56,32,6,.55);
+        box-shadow:inset 0 3px 7px rgba(30,16,2,.5), inset 0 -1px 0 rgba(255,225,170,.25);
+        display:flex;align-items:center;justify-content:center;line-height:1;
+      }
+      .slot.filled{border-color:rgba(56,32,6,.35);background:rgba(255,238,205,.16)}
+      .slot.danger{border-color:var(--danger);background:rgba(229,72,77,.18)}
+      .slot.matching{animation:matchPulse .3s ease 2}
+      @keyframes matchPulse{50%{transform:scale(1.14)}}
+
+      .hold-row{display:none;margin-top:6px;align-items:center;gap:8px}
+      .hold-row.show{display:flex}
+      .hold-row span{font-size:11px;color:var(--ink-soft);white-space:nowrap}
+      .hold{display:flex;gap:5px}
+      .hold .slot{width:36px;height:30px;flex:none;cursor:pointer}
+
+      /* ---------- three blue prop buttons under the trough: one slim
+         row each (icon, name, uses left side by side) so the strip
+         stays short and the board keeps the screen ---------- */
+      .props{display:flex;gap:6px;margin-top:6px}
+      .prop{
+        flex:1;border:1px solid #1463ad;border-bottom:2px solid #0f5291;border-radius:10px;
+        background:linear-gradient(180deg,#3ea9f5,#1c7cd6);
+        padding:5px 2px;color:#fff;min-height:0;
+        box-shadow:0 4px 10px rgba(20,90,160,.26);
+        display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;
+      }
+      .prop .ic{font-size:15px;line-height:1}
+      .prop b{font-size:13px;letter-spacing:.04em}
+      .prop small{font-size:9px;color:rgba(255,255,255,.88)}
+      .prop:disabled{opacity:.45;cursor:not-allowed}
+      .prop:not(:disabled):active{transform:scale(.96)}
+
+      .actions{display:flex;gap:6px;margin-top:6px}
+      .actions .btn-main,.actions .btn-ghost{min-height:0}
+      .btn-main{
+        flex:1;background:var(--mint);border:none;color:#fff;font-size:13px;font-weight:700;
+        border-radius:10px;padding:6px;box-shadow:0 5px 12px rgba(20,154,110,.32);
+      }
+      .btn-main:active{transform:scale(.98)}
+      .btn-ghost{
+        background:var(--panel);border:1px solid var(--line);color:var(--ink);
+        font-size:13px;font-weight:600;border-radius:10px;padding:6px 12px;
+      }
+      .dialog .btn-main,.dialog .btn-ghost{font-size:15px;padding:12px;border-radius:14px}
+
+      /* short portrait handsets: tighten the header so the board keeps room */
+      @media (max-height:700px){
+        .icon-btn{width:38px;height:38px;font-size:16px}
+        .tray-zone{margin-top:2px}
+        .props{margin-top:5px}
+      }
+
+      /* ---------- overlay ---------- */
+      .mask{
+        position:fixed;inset:0;background:rgba(8,30,22,.55);backdrop-filter:blur(3px);
+        display:none;align-items:center;justify-content:center;padding:20px;z-index:50;
+      }
+      .mask.show{display:flex}
+      .dialog{
+        background:var(--panel);border-radius:22px;padding:26px 22px;width:100%;max-width:340px;
+        text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:dlgIn .3s ease;
+      }
+      @keyframes dlgIn{from{transform:translateY(16px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+      .dialog .big{font-size:52px;line-height:1.1}
+      .dialog h2{margin:8px 0 4px;font-size:22px}
+      .dialog p{margin:0 0 6px;color:var(--ink-soft);font-size:14px;line-height:1.6}
+      .dialog .stars{font-size:28px;letter-spacing:4px;margin:6px 0 2px}
+      .dialog .dlg-stats{display:flex;gap:8px;margin:14px 0}
+      .dialog .dlg-stats div{flex:1;background:var(--panel-soft);border:1px solid var(--line);border-radius:12px;padding:8px 4px}
+      .dialog .dlg-stats b{display:block;font-size:17px}
+      .dialog .dlg-stats span{font-size:11px;color:var(--ink-soft)}
+      .dialog .row{display:flex;gap:8px;margin-top:6px}
+      .dialog .row button{flex:1}
+
+      .toast{
+        position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);
+        background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:99px;
+        font-size:14px;opacity:0;pointer-events:none;transition:all .25s ease;z-index:60;
+        max-width:88vw;text-align:center;
+      }
+      .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+      @media (prefers-reduced-motion: reduce){
+        .tile.pop,.slot.matching,.dialog{animation:none}
+        .progress i{transition:none}
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <button class="icon-btn" id="soundBtn" aria-label="开关音效">🔊</button>
+      </div>
+
+      <div class="board-zone">
+        <div class="stage" id="stage" aria-label="牌堆，只点没被压住的亮牌"></div>
+      </div>
+
+      <div class="tray-zone">
+        <p class="tray-label"><span>塞满 7 张还没凑齐 3 张，就输了</span></p>
+        <div class="tray" id="tray"></div>
+        <div class="hold-row" id="holdRow">
+          <span>暂存区（点牌放回槽位）</span>
+          <div class="hold" id="hold"></div>
+        </div>
+      </div>
+
+      <div class="props">
+        <button class="prop" id="stashBtn"><span class="ic">📤</span><b>移出</b><small id="stashLeft">剩 3 次</small></button>
+        <button class="prop" id="undoBtn"><span class="ic">↩️</span><b>撤回</b><small id="undoLeft">剩 3 次</small></button>
+        <button class="prop" id="shuffleBtn"><span class="ic">🔀</span><b>洗牌</b><small id="shuffleLeft">剩 3 次</small></button>
+      </div>
+
+      <div class="actions">
+        <button class="btn-main" id="restartBtn">重新开始</button>
+        <button class="btn-ghost" id="newBtn">换一局</button>
+      </div>
+
+      <div class="mini-stats">
+        <span>关卡 <b id="statLevel">1 / 21</b></span>
+        <span>剩余 <b id="statLeft">0</b></span>
+        <span>用时 <b id="statTime">00:00</b></span>
+        <span>已消 <b id="statCleared">0</b></span>
+        <span>本关最佳 <b id="statBest">—</b></span>
+      </div>
+      <div class="progress"><i id="progBar"></i></div>
+    </div>
+
+    <div class="mask" id="mask">
+      <div class="dialog">
+        <div class="big" id="dlgEmoji">🎉</div>
+        <h2 id="dlgTitle">过关啦！</h2>
+        <div class="stars" id="dlgStars"></div>
+        <p id="dlgText"></p>
+        <div class="dlg-stats">
+          <div><b id="dlgTime">00:00</b><span>用时</span></div>
+          <div><b id="dlgMoves">0</b><span>步数</span></div>
+          <div><b id="dlgProps">0</b><span>道具使用</span></div>
+        </div>
+        <div class="row">
+          <button class="btn-ghost" id="dlgRetry">重开本关</button>
+          <button class="btn-main" id="dlgNext">下一关</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      (function(){
+        "use strict";
+
+        /* ============ config ============ */
+        // glossy cartoon 3D fruit artwork (assets/fruit-0..9.webp), one per type
+        var FACES = [];
+        for(var fi = 0; fi < 10; fi++) FACES.push("assets/fruit-" + fi + ".webp");
+        function faceImg(type){
+          var im = document.createElement("img");
+          im.src = FACES[type];
+          im.alt = "";
+          im.draggable = false;
+          return im;
+        }
+        // 21 levels: tiles, fruit types and stack depth all climb; the last one is the wall
+        var LEVELS = [
+          { total: 36,  types: 6,  layers: 5  },
+          { total: 42,  types: 6,  layers: 5  },
+          { total: 48,  types: 7,  layers: 6  },
+          { total: 54,  types: 7,  layers: 6  },
+          { total: 60,  types: 8,  layers: 7  },
+          { total: 66,  types: 8,  layers: 7  },
+          { total: 72,  types: 8,  layers: 8  },
+          { total: 78,  types: 9,  layers: 8  },
+          { total: 84,  types: 9,  layers: 8  },
+          { total: 90,  types: 9,  layers: 9  },
+          { total: 96,  types: 10, layers: 9  },
+          { total: 102, types: 10, layers: 9  },
+          { total: 108, types: 10, layers: 10 },
+          { total: 114, types: 10, layers: 10 },
+          { total: 120, types: 10, layers: 11 },
+          { total: 126, types: 10, layers: 11 },
+          { total: 132, types: 10, layers: 12 },
+          { total: 138, types: 10, layers: 12 },
+          { total: 144, types: 10, layers: 13 },
+          { total: 150, types: 10, layers: 13 },
+          { total: 162, types: 10, layers: 14 }
+        ];
+        var TILE_W = 92, TILE_H = 92, STAGE_W = 400, STAGE_H = 520;
+        var PROP_MAX = 3;
+
+        /* ============ state ============ */
+        var level = 1;                 // current level, 1..21
+        var clearedLevels = {};        // levels beaten this session
+        var lastWin = false;           // what the end dialog is showing
+        var tiles = [];        // {id,type,x,y,layer,removed,el}
+        var tray = [];         // tile ids in tray order
+        var hold = [];         // tile ids stashed
+        var history = [];      // snapshots for undo
+        var props = { undo: PROP_MAX, shuffle: PROP_MAX, stash: PROP_MAX };
+        var propsUsed = 0;
+        var moves = 0, cleared = 0, totalTiles = 0;
+        var startedAt = 0, elapsed = 0, timerId = null, playing = false;
+        var best = {};         // per-level best seconds (session only)
+        var soundOn = true;
+
+        /* ============ dom ============ */
+        var stage = document.getElementById("stage");
+        var trayEl = document.getElementById("tray");
+        var holdRow = document.getElementById("holdRow");
+        var holdEl = document.getElementById("hold");
+        var statLevel = document.getElementById("statLevel");
+        var statLeft = document.getElementById("statLeft");
+        var statTime = document.getElementById("statTime");
+        var statCleared = document.getElementById("statCleared");
+        var statBest = document.getElementById("statBest");
+        var progBar = document.getElementById("progBar");
+        var mask = document.getElementById("mask");
+        var toastEl = document.getElementById("toast");
+
+        /* ============ audio ============ */
+        var actx = null;
+        function ac(){
+          if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+          if(actx && actx.state === "suspended") actx.resume();
+          return actx;
+        }
+        function tone(freq, dur, type, vol, delay){
+          if(!soundOn) return;
+          var c = ac(); if(!c) return;
+          var t = c.currentTime + (delay||0);
+          var o = c.createOscillator(), g = c.createGain();
+          o.type = type||"sine"; o.frequency.setValueAtTime(freq, t);
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(vol||0.16, t+0.012);
+          g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+          o.connect(g); g.connect(c.destination);
+          o.start(t); o.stop(t+dur+0.05);
+        }
+        function sfx(name){
+          if(name==="tap"){ tone(520,.09,"triangle",.14); }
+          else if(name==="match"){ tone(660,.12,"sine",.16); tone(880,.14,"sine",.16,.07); tone(1180,.18,"sine",.14,.14); }
+          else if(name==="win"){ [523,659,784,1046,1318].forEach(function(f,i){ tone(f,.22,"triangle",.16,i*.09); }); }
+          else if(name==="lose"){ tone(320,.25,"sawtooth",.07); tone(210,.4,"sawtooth",.07,.14); }
+          else if(name==="prop"){ tone(440,.1,"triangle",.12); tone(587,.12,"triangle",.12,.06); }
+          else if(name==="err"){ tone(180,.15,"square",.06); }
+        }
+
+        /* ============ helpers ============ */
+        var toastTimer = null;
+        function toast(msg){
+          toastEl.textContent = msg;
+          toastEl.classList.add("show");
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 1900);
+        }
+        function fmt(s){
+          var m = Math.floor(s/60), r = s%60;
+          return (m<10?"0":"")+m+":"+(r<10?"0":"")+r;
+        }
+        function shuffleArr(a){
+          for(var i=a.length-1;i>0;i--){
+            var j = Math.floor(Math.random()*(i+1));
+            var t = a[i]; a[i]=a[j]; a[j]=t;
+          }
+          return a;
+        }
+
+        /* ============ level generation ============ */
+        function levelTag(n){
+          if(n <= 5) return "入门";
+          if(n <= 10) return "进阶";
+          if(n <= 15) return "困难";
+          if(n <= 20) return "高难";
+          return "终极";
+        }
+        // a level unlocks only once the previous one has been beaten;
+        // level 1 is always open, cleared levels stay replayable
+        function isUnlocked(n){
+          return n === 1 || !!clearedLevels[n - 1];
+        }
+        function renderLevels(){
+          statLevel.textContent = level + " / " + LEVELS.length;
+        }
+
+        function genPositions(count, layers){
+          // Meadow layout, like the reference: the pile is dealt onto a
+          // 5x6 grid that sits in the MIDDLE of the grass — a patch about
+          // 77% of the stage wide and 77% tall, centred both ways, so open
+          // lawn shows all around the heap. Cells are shuffled per layer;
+          // a small per-layer shift + jitter keeps layers from lining up
+          // exactly, so the pile still reads as stacked, not printed.
+          var COLS = 5, ROWS = 6;
+          var stepX = 54, stepY = 62;
+          var playW = TILE_W + (COLS - 1) * stepX;   // 308
+          var playH = TILE_H + (ROWS - 1) * stepY;   // 402
+          var baseX = Math.round((STAGE_W - playW) / 2);   // 46
+          var baseY = Math.round((STAGE_H - playH) / 2);   // 59
+          var cells = [];
+          for(var gy=0; gy<ROWS; gy++) for(var gx=0; gx<COLS; gx++) cells.push({gx:gx, gy:gy});
+
+          var pos = [];
+          var perLayer = Math.ceil(count / layers);
+          for(var L=0; L<layers; L++){
+            var n = (L === layers-1) ? (count - perLayer*(layers-1)) : perLayer;
+            if(n <= 0) continue;
+            var order = shuffleArr(cells.slice());
+            var offX = (L % 2) * stepX * 0.32;
+            var offY = (L % 3) * stepY * 0.22;
+            for(var i=0; i<n && i<order.length; i++){
+              var x = baseX + order[i].gx * stepX + offX + (Math.random()*14 - 7);
+              var y = baseY + order[i].gy * stepY + offY + (Math.random()*16 - 8);
+              if(x < 0) x = 0;
+              if(y < 0) y = 0;
+              if(x + TILE_W > STAGE_W) x = STAGE_W - TILE_W;
+              if(y + TILE_H > STAGE_H) y = STAGE_H - TILE_H;
+              pos.push({x: Math.round(x), y: Math.round(y), layer: L});
+            }
+          }
+          return pos;
+        }
+
+        function newGame(){
+          var cfg = LEVELS[level - 1];
+          totalTiles = cfg.total;
+          var positions = genPositions(cfg.total, cfg.layers);
+          totalTiles = positions.length - (positions.length % 3);
+          positions = positions.slice(0, totalTiles);
+
+          // build type list: triples only, so the board is always clearable in principle
+          var types = [];
+          for(var i=0;i<totalTiles;i+=3){
+            var t = Math.floor(Math.random()*cfg.types);
+            types.push(t,t,t);
+          }
+          shuffleArr(types);
+
+          tiles = positions.map(function(p, idx){
+            return { id: idx, type: types[idx], x: p.x, y: p.y, layer: p.layer, removed: false, el: null };
+          });
+          tray = []; hold = []; history = [];
+          props = { undo: PROP_MAX, shuffle: PROP_MAX, stash: PROP_MAX };
+          propsUsed = 0; moves = 0; cleared = 0;
+          elapsed = 0; startedAt = Date.now(); playing = true;
+          mask.classList.remove("show");
+          renderLevels();
+          renderBoard();
+          renderTray(); renderHold(); renderStats(); renderProps();
+          startTimer();
+        }
+
+        /* ============ board logic ============ */
+        function isCovered(tile){
+          for(var i=0;i<tiles.length;i++){
+            var o = tiles[i];
+            if(o.removed || o.id === tile.id || o.layer <= tile.layer) continue;
+            // cover test stays at ~2/3 of the (now bigger) tile, so enlarging
+            // the fruit doesn't suddenly bury every tile under its neighbours
+            if(Math.abs(o.x - tile.x) < TILE_W*0.68 && Math.abs(o.y - tile.y) < TILE_H*0.72) return true;
+          }
+          return false;
+        }
+        function remainingCount(){
+          var n = 0;
+          tiles.forEach(function(t){ if(!t.removed) n++; });
+          return n;
+        }
+
+        // free tiles are real buttons; covered/removed tiles are plain blocks,
+        // so a buried tile is never presented as a tappable control
+        function buildTileEl(t, interactive){
+          var d = document.createElement(interactive ? "button" : "div");
+          d.className = "tile";
+          if(interactive){
+            d.type = "button";
+            d.setAttribute("aria-label", "牌");
+            d.addEventListener("click", function(){ onTileTap(t.id); });
+          }
+          var im = faceImg(t.type);
+          im.className = "fruit-img";
+          d.appendChild(im);
+          d.style.setProperty("--lift", t.layer);
+          // each fruit tossed into the pile at its own slight angle
+          d.style.setProperty("--rot", (((t.id * 37 + t.layer * 13) % 9) - 4) + "deg");
+          d.style.left = (t.x/STAGE_W*100) + "%";
+          d.style.top = (t.y/STAGE_H*100) + "%";
+          d.style.width = (TILE_W/STAGE_W*100) + "%";
+          d.style.height = (TILE_H/STAGE_H*100) + "%";
+          d.style.zIndex = t.layer + 1;
+          return d;
+        }
+        function swapTileEl(t, interactive){
+          var old = t.el;
+          var d = buildTileEl(t, interactive);
+          if(t.removed) d.classList.add("gone");
+          else {
+            d.classList.toggle("covered", !interactive);
+            d.classList.toggle("free", interactive);
+          }
+          if(old && old.parentNode) old.parentNode.replaceChild(d, old);
+          else stage.appendChild(d);
+          t.el = d;
+        }
+        function renderBoard(){
+          stage.innerHTML = "";
+          var sorted = tiles.slice().sort(function(a,b){ return a.layer - b.layer; });
+          sorted.forEach(function(t){
+            t.el = buildTileEl(t, true);
+            stage.appendChild(t.el);
+          });
+          refreshCover();
+        }
+        function refreshCover(){
+          tiles.forEach(function(t){
+            if(!t.el) return;
+            if(t.removed){
+              if(t.el.tagName === "BUTTON") swapTileEl(t, false);
+              else t.el.classList.add("gone");
+              return;
+            }
+            var cov = isCovered(t);
+            var isBtn = t.el.tagName === "BUTTON";
+            if(cov && isBtn) swapTileEl(t, false);
+            else if(!cov && !isBtn) swapTileEl(t, true);
+            else {
+              t.el.classList.toggle("covered", cov);
+              t.el.classList.toggle("free", !cov);
+            }
+          });
+        }
+
+        function onTileTap(id){
+          if(!playing) return;
+          var t = tiles[id];
+          if(!t || t.removed) return;
+          if(isCovered(t)){ sfx("err"); toast("这张牌被压住了，先消掉上面的牌"); return; }
+          if(tray.length >= 7){ sfx("err"); return; }
+
+          history.push({
+            tileId: id,
+            tray: tray.slice(),
+            hold: hold.slice(),
+            cleared: cleared,
+            moves: moves
+          });
+          if(history.length > 60) history.shift();
+
+          t.removed = true;
+          moves++;
+          sfx("tap");
+          if(t.el){ t.el.classList.add("gone"); }
+
+          // insert grouped: keep same types together like the original game
+          var insertAt = tray.length;
+          for(var i=tray.length-1;i>=0;i--){
+            if(tiles[tray[i]].type === t.type){ insertAt = i+1; break; }
+          }
+          tray.splice(insertAt, 0, id);
+
+          refreshCover();
+          renderTray(); renderStats();
+
+          // triple match?
+          var same = tray.filter(function(x){ return tiles[x].type === t.type; });
+          if(same.length === 3){
+            setTimeout(function(){
+              tray = tray.filter(function(x){ return tiles[x].type !== t.type; });
+              cleared += 3;
+              sfx("match");
+              renderTray(); renderStats();
+              checkEnd();
+            }, 240);
+          } else {
+            checkEnd();
+          }
+        }
+
+        function checkEnd(){
+          if(!playing) return;
+          if(remainingCount() === 0 && tray.length === 0 && hold.length === 0){
+            winGame();
+          } else if(tray.length >= 7){
+            // tray full and no pending triple (triples resolve above before this can persist)
+            var counts = {};
+            var hasTriple = false;
+            tray.forEach(function(id){ var ty = tiles[id].type; counts[ty]=(counts[ty]||0)+1; if(counts[ty]>=3) hasTriple = true; });
+            if(!hasTriple) loseGame();
+          }
+        }
+
+        /* ============ tray / hold rendering ============ */
+        function renderTray(){
+          trayEl.innerHTML = "";
+          var counts = {};
+          tray.forEach(function(id){ var ty = tiles[id].type; counts[ty]=(counts[ty]||0)+1; });
+          for(var i=0;i<7;i++){
+            var s = document.createElement("div");
+            s.className = "slot";
+            if(i < tray.length){
+              var ty = tiles[tray[i]].type;
+              s.classList.add("filled");
+              s.appendChild(faceImg(ty));
+              if(counts[ty] === 2) s.classList.add("matching");
+              if(tray.length >= 6 && counts[ty] < 2) s.classList.add("danger");
+            }
+            trayEl.appendChild(s);
+          }
+        }
+        function renderHold(){
+          holdRow.classList.toggle("show", hold.length > 0);
+          holdEl.innerHTML = "";
+          hold.forEach(function(id){
+            var s = document.createElement("button");
+            s.className = "slot filled";
+            s.type = "button";
+            s.appendChild(faceImg(tiles[id].type));
+            s.setAttribute("aria-label", "放回槽位");
+            s.addEventListener("click", function(){ returnFromHold(id); });
+            holdEl.appendChild(s);
+          });
+        }
+        function returnFromHold(id){
+          if(!playing) return;
+          if(tray.length >= 7){ sfx("err"); toast("槽位满了，先消除一些再放回"); return; }
+          hold = hold.filter(function(x){ return x !== id; });
+          var ty = tiles[id].type;
+          var insertAt = tray.length;
+          for(var i=tray.length-1;i>=0;i--){
+            if(tiles[tray[i]].type === ty){ insertAt = i+1; break; }
+          }
+          tray.splice(insertAt, 0, id);
+          sfx("tap");
+          renderTray(); renderHold();
+          var same = tray.filter(function(x){ return tiles[x].type === ty; });
+          if(same.length === 3){
+            setTimeout(function(){
+              tray = tray.filter(function(x){ return tiles[x].type !== ty; });
+              cleared += 3; sfx("match");
+              renderTray(); renderStats(); checkEnd();
+            }, 240);
+          } else checkEnd();
+        }
+
+        /* ============ props ============ */
+        function renderProps(){
+          document.getElementById("undoLeft").textContent = "剩 " + props.undo + " 次";
+          document.getElementById("shuffleLeft").textContent = "剩 " + props.shuffle + " 次";
+          document.getElementById("stashLeft").textContent = "剩 " + props.stash + " 次";
+          document.getElementById("undoBtn").disabled = props.undo <= 0 || history.length === 0 || !playing;
+          document.getElementById("shuffleBtn").disabled = props.shuffle <= 0 || !playing;
+          document.getElementById("stashBtn").disabled = props.stash <= 0 || tray.length === 0 || !playing;
+        }
+        document.getElementById("undoBtn").addEventListener("click", function(){
+          if(props.undo <= 0 || !history.length) return;
+          var h = history.pop();
+          var t = tiles[h.tileId];
+          t.removed = false;
+          if(t.el){ t.el.classList.remove("gone"); }
+          tray = h.tray; hold = h.hold; cleared = h.cleared; moves = h.moves;
+          props.undo--; propsUsed++;
+          sfx("prop");
+          refreshCover(); renderTray(); renderHold(); renderStats(); renderProps();
+          toast("已撤销一步");
+        });
+        document.getElementById("shuffleBtn").addEventListener("click", function(){
+          if(props.shuffle <= 0) return;
+          var rest = tiles.filter(function(t){ return !t.removed; });
+          if(rest.length < 2){ toast("没剩几张牌了，不用洗"); return; }
+          var types = shuffleArr(rest.map(function(t){ return t.type; }));
+          rest.forEach(function(t, i){
+            t.type = types[i];
+            var im = t.el && t.el.querySelector("img");
+            if(im) im.src = FACES[t.type];
+          });
+          props.shuffle--; propsUsed++;
+          sfx("prop");
+          renderProps();
+          toast("牌面已重新洗牌");
+        });
+        document.getElementById("stashBtn").addEventListener("click", function(){
+          if(props.stash <= 0 || tray.length === 0) return;
+          var n = Math.min(3, tray.length);
+          var out = tray.splice(0, n);
+          hold = hold.concat(out);
+          props.stash--; propsUsed++;
+          sfx("prop");
+          renderTray(); renderHold(); renderProps();
+          toast("已移出 " + n + " 张到暂存区，点暂存牌可放回");
+        });
+
+        /* ============ stats / timer ============ */
+        function renderStats(){
+          var left = remainingCount();
+          statLeft.textContent = left;
+          statCleared.textContent = cleared;
+          statBest.textContent = best[level] ? fmt(best[level]) : "—";
+          var done = totalTiles ? (totalTiles - left - tray.length - hold.length) / totalTiles : 0;
+          progBar.style.width = Math.round(Math.max(0, Math.min(1, done)) * 100) + "%";
+          renderProps();
+        }
+        function startTimer(){
+          stopTimer();
+          timerId = setInterval(function(){
+            if(!playing) return;
+            elapsed = Math.floor((Date.now() - startedAt) / 1000);
+            statTime.textContent = fmt(elapsed);
+          }, 500);
+          statTime.textContent = "00:00";
+        }
+        function stopTimer(){ if(timerId){ clearInterval(timerId); timerId = null; } }
+
+        /* ============ win / lose ============ */
+        function stars(){
+          if(propsUsed === 0) return 3;
+          if(propsUsed <= 2) return 2;
+          return 1;
+        }
+        function showDialog(win){
+          lastWin = win;
+          var isLast = level >= LEVELS.length;
+          document.getElementById("dlgEmoji").textContent = win ? (isLast ? "🏆" : "🎉") : "😵";
+          document.getElementById("dlgTitle").textContent = win
+            ? (isLast ? "21 关全通关！" : "第 " + level + " 关过关！")
+            : "槽位塞满了";
+          document.getElementById("dlgStars").textContent = win ? ("★★★".slice(0, stars()) + "☆☆☆".slice(0, 3 - stars())) : "";
+          document.getElementById("dlgText").textContent = win
+            ? (isLast
+              ? "最难的第 21 关也消完了，21 关全部拿下！"
+              : "本关的牌全消完了。下一关是 " + LEVELS[level].total + " 张牌、叠 " + LEVELS[level].layers + " 层，更难了。")
+            : "第 " + level + " 关就差一点。用木槽下方的移出、撤回、洗牌道具能救回不少残局，再试一次吧。";
+          document.getElementById("dlgTime").textContent = fmt(elapsed);
+          document.getElementById("dlgMoves").textContent = moves;
+          document.getElementById("dlgProps").textContent = propsUsed;
+          document.getElementById("dlgNext").textContent = win ? (isLast ? "再战第 21 关" : "下一关 ▶") : "重新挑战";
+          mask.classList.add("show");
+        }
+        function winGame(){
+          playing = false; stopTimer();
+          elapsed = Math.floor((Date.now() - startedAt) / 1000);
+          if(!best[level] || elapsed < best[level]) best[level] = elapsed;
+          clearedLevels[level] = true;
+          sfx("win");
+          renderLevels();
+          renderStats();
+          setTimeout(function(){ showDialog(true); }, 350);
+        }
+        function loseGame(){
+          playing = false; stopTimer();
+          elapsed = Math.floor((Date.now() - startedAt) / 1000);
+          sfx("lose");
+          renderProps();
+          setTimeout(function(){ showDialog(false); }, 350);
+        }
+
+        /* ============ controls ============ */
+        document.getElementById("restartBtn").addEventListener("click", function(){ newGame(); toast("第 " + level + " 关已重新发牌"); });
+        document.getElementById("newBtn").addEventListener("click", function(){ newGame(); toast("第 " + level + " 关换了一副新牌"); });
+        document.getElementById("dlgRetry").addEventListener("click", function(){ newGame(); });
+        document.getElementById("dlgNext").addEventListener("click", function(){
+          if(lastWin && level < LEVELS.length) level++;
+          newGame();
+        });
+        document.getElementById("soundBtn").addEventListener("click", function(){
+          soundOn = !soundOn;
+          this.textContent = soundOn ? "🔊" : "🔇";
+          if(soundOn) sfx("tap");
+        });
+
+        newGame();
+      })();
+    </script>
+  </body>
+</html>
