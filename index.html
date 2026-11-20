@@ -2,9 +2,15 @@
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="data:," />
+    <!-- rounded display faces for the pop-over words only — Baloo 2
+         for the praise shout, Fredoka for the win word; everything
+         else on the page keeps the system sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Fredoka:wght@600;700&display=swap" rel="stylesheet" />
     <title>水果叠叠消</title>
     <style>
       :root{
@@ -21,6 +27,9 @@
         --accent:#ff9f2e;
         --danger:#e5484d;
         --slot-bg:rgba(74,44,13,.42);
+        /* the tray's ONE height, a definite length: never derived
+           from aspect-ratio or from what is inside the grooves */
+        --slot-h:clamp(40px, 12vw, 52px);
         --wood-hi:#b57e3e;
         --wood:#9c6530;
         --wood-lo:#7c4c20;
@@ -46,14 +55,20 @@
         }
       }
       *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-      html,body{margin:0;padding:0}
+      /* the page can never scroll or rubber-band: the column is exactly
+         one viewport tall, and any scroll/bounce reads as the whole
+         screen shaking while tapping */
+      html,body{margin:0;padding:0;overflow:hidden;height:100%}
       body{
         font-family:"PingFang SC","Microsoft YaHei","Source Han Sans SC","Noto Sans SC",system-ui,sans-serif;
         color:var(--ink);
+        overscroll-behavior:none;
+        touch-action:manipulation;
+        -webkit-touch-callout:none;
+        user-select:none;-webkit-user-select:none;
         background:
           radial-gradient(130% 55% at 50% -8%, var(--bg2) 0%, transparent 60%),
           var(--bg);
-        min-height:100vh;
       }
       /* scattered hand-drawn grass tufts over the whole meadow (original
          little blade clusters, drawn as inline SVG strokes) */
@@ -75,7 +90,7 @@
       }
       .wrap{position:relative;z-index:1}
       button,[role="button"]{min-height:2.25rem}
-      button{font-family:inherit;cursor:pointer}
+      button{font-family:inherit;cursor:pointer;touch-action:manipulation}
       /* phone-portrait first: the whole game is one full-height column —
          top bar, board (flexes to whatever height is left), wooden tray,
          prop buttons, stats, level picker — sized to a portrait handset
@@ -83,7 +98,14 @@
       .wrap{
         max-width:480px;margin:0 auto;
         padding:10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
-        height:100vh;height:100dvh;
+        /* exactly the html/body height (100% of the frame), NOT
+           100dvh: in the phone webview dvh came out SHORTER than the
+           visible frame, so the whole column ended early and a tall
+           empty band of meadow sat under the stats row — the tray
+           and level strip looked like they floated mid-screen. At
+           height:100% the board flexes over the full frame and the
+           tray, level strip, props and stats sit at the very bottom. */
+        height:100%;
         display:flex;flex-direction:column;
       }
 
@@ -94,12 +116,22 @@
         background:linear-gradient(180deg,#3ea9f5,#1c7cd6);color:#fff;font-size:19px;line-height:1;
         display:flex;align-items:center;justify-content:center;box-shadow:0 5px 12px rgba(20,90,160,.30);
       }
-      .icon-btn:active{transform:scale(.94)}
+      /* no :active scaling anywhere in the game: a button that moves
+         when pressed makes the whole screen feel like it jumps */
 
       /* ---------- compact stats strip ---------- */
+      /* one nowrap line at a fixed height: the numbers change width as
+         they count, and if this strip ever wrapped to two lines the
+         board above it would resize and every tile would jump — the
+         "screen shake" felt while tapping. It never wraps now. */
       .mini-stats{
-        display:flex;flex-wrap:wrap;gap:2px 12px;align-items:baseline;
+        display:flex;flex-wrap:nowrap;gap:2px 10px;align-items:baseline;
         margin-top:6px;padding:0 4px;font-size:11px;color:var(--ink-soft);
+        min-height:16px;white-space:nowrap;overflow:hidden;
+      }
+      .mini-stats span{white-space:nowrap}
+      @media (max-width:360px){
+        .mini-stats{font-size:10px;gap:2px 7px}
       }
       .mini-stats b{color:var(--ink);font-size:12px;font-variant-numeric:tabular-nums}
 
@@ -108,7 +140,137 @@
 
       /* ---------- board: the pile sits straight on the open meadow,
          concentrated in the middle of the grass, no panel behind it ---- */
-      .board-zone{margin-top:2px;flex:1 1 auto;min-height:0;display:flex}
+      .board-zone{position:relative;margin-top:2px;flex:1 1 auto;min-height:0;display:flex}
+      /* ---------- praise shout on a triple / combo chain ----------
+         The word pops over the middle of the meadow in the sticker
+         lettering of Chinese mini-games: a rounded display face,
+         one SOLID yellow fill at every rung (the player asked for
+         a flat colour, no gradient, first tier to last), a fat
+         white edge and a hard offset
+         shadow, with a "COMBO ×n" line under it
+         from the second chain link on. It is deliberately SMALLER
+         than the old shout (the player asked: not so big) and it
+         POPS in — a quick overshoot bounce on the word alone — the
+         way those games flash their praise. The bounce animates
+         only this absolutely-positioned overlay's own transform:
+         no layout moves, no tile moves, the board never budges.
+         pointer-events none: it never blocks a tap on the pile.
+         The z-index has to tower over every tile: tiles carry inline
+         z-indexes in the thousands (pile position × 100 + layer), and
+         the stage creates no stacking context of its own, so a modest
+         z-index here left the word painted UNDER the fruit — it now
+         sits on top of the whole pile, always readable. */
+      .praise{
+        position:absolute;left:50%;top:34%;z-index:9999;pointer-events:none;
+        transform:translate(-50%,-50%);
+        text-align:center;opacity:0;white-space:nowrap;max-width:94vw;
+      }
+      .praise .word{
+        display:block;font-weight:800;letter-spacing:.02em;line-height:1.05;
+        font-family:"Baloo 2","PingFang SC","Microsoft YaHei",sans-serif;
+        color:#ffd21f;
+        font-size:var(--ps,clamp(21px,6vw,27px));
+        text-shadow:0 3px 0 rgba(255,255,255,.9), 0 8px 22px rgba(46,84,20,.35);
+      }
+      /* the ladder is VISIBLE, not just audible: the colour never
+         changes — solid yellow on every rung — but each rung up is
+         set a step larger (the --ps size praise() hands in),
+         outlined a step heavier and shadowed a step deeper, so a
+         fast chain
+         literally grows on screen — Great is a small cheer and
+         Unbelievable is the biggest shout of the four, flanked by
+         two stars. The whole ladder is sized to pop, not to loom:
+         the hierarchy is clear, the shout stays light. */
+      .praise.t2 .word{
+        text-shadow:0 3px 0 rgba(255,255,255,.92), 0 2px 0 rgba(120,50,0,.18), 0 10px 24px rgba(46,84,20,.38);
+      }
+      .praise.t3 .word{
+        -webkit-text-stroke:1.5px rgba(255,255,255,.9);
+        text-shadow:0 3px 0 rgba(255,255,255,.95), 0 4px 0 rgba(122,72,0,.25), 0 14px 32px rgba(46,84,20,.45);
+      }
+      .praise.t4 .word{
+        -webkit-text-stroke:2px rgba(255,255,255,.95);
+        text-shadow:0 3px 0 rgba(255,255,255,1), 0 5px 0 rgba(122,72,0,.28), 0 16px 36px rgba(46,84,20,.5);
+      }
+      .praise.t4 .word::before,.praise.t4 .word::after{
+        content:"★";font-size:.3em;vertical-align:.5em;margin:0 .06em;color:#ffd83d;
+        background:none;-webkit-text-fill-color:#ffd83d;
+        -webkit-text-stroke:1px rgba(255,255,255,.9);
+        text-shadow:0 2px 6px rgba(46,84,20,.4);
+      }
+      .praise .combo{
+        display:none;margin-top:5px;font-size:15px;font-weight:800;letter-spacing:.14em;
+        font-family:"Baloo 2","PingFang SC","Microsoft YaHei",sans-serif;
+        color:#fff;text-shadow:0 2px 0 rgba(20,90,40,.55), 0 4px 12px rgba(46,84,20,.4);
+      }
+      .praise.t3 .combo{font-size:16px}
+      .praise.t4 .combo{font-size:18px;letter-spacing:.18em}
+      /* the pop the player asked for: the word bursts in small,
+         overshoots a touch past full size, then settles — sudden,
+         like the praise flashes in Chinese mini-games. It plays on
+         the word's own transform inside the fixed overlay, so the
+         page, the board and every fruit stay perfectly still while
+         it bounces. Hiding stays instant (no fade-out): the next
+         rung's pop simply replaces it. */
+      .praise.show{opacity:1}
+      .praise.show .word{animation:praisePop .34s cubic-bezier(.2,1.6,.4,1) both}
+      .praise.show .combo{display:block}
+      @keyframes praisePop{
+        0%{transform:scale(.3) rotate(-4deg);opacity:0}
+        55%{transform:scale(1.14) rotate(1.5deg);opacity:1}
+        78%{transform:scale(.96) rotate(-.5deg)}
+        100%{transform:scale(1) rotate(0deg);opacity:1}
+      }
+
+      /* ---------- win celebration ----------
+         Clearing a level is a party, not just a dialog: the recorded
+         voice shouts "Congratulations!", the word itself hangs big
+         over the meadow in Fredoka in one SOLID yellow (the player
+         asked for a flat colour here too — it was a rose-red
+         gradient before), and confetti rains over the whole
+         screen (dialog included). The whole beat runs fast and
+         short: the word POPS in with one quick overshoot bounce on
+         its own transform inside the fixed overlay — the page
+         itself stays perfectly still — and only the confetti
+         pieces travel, each inside the same fixed overlay. */
+      .celebrate{
+        position:absolute;left:50%;top:34%;z-index:9998;pointer-events:none;
+        transform:translate(-50%,-50%);
+        text-align:center;opacity:0;white-space:nowrap;max-width:96vw;
+        transition:opacity .12s ease;
+      }
+      .celebrate .word{
+        display:block;font-weight:700;letter-spacing:.02em;line-height:1.05;
+        font-family:"Fredoka","PingFang SC","Microsoft YaHei",sans-serif;
+        font-size:clamp(30px,9.5vw,50px);color:#ffd21f;
+        -webkit-text-stroke:2px rgba(255,255,255,.95);
+        text-shadow:0 3px 0 rgba(255,255,255,1), 0 5px 0 rgba(122,72,0,.3), 0 16px 36px rgba(46,84,20,.5);
+      }
+      .celebrate.show .word{animation:celebratePop .3s cubic-bezier(.2,1.6,.4,1) both}
+      @keyframes celebratePop{
+        0%{transform:scale(.4) rotate(-3deg);opacity:0}
+        55%{transform:scale(1.1) rotate(1deg);opacity:1}
+        100%{transform:scale(1) rotate(0deg);opacity:1}
+      }
+      .celebrate .word::before,.celebrate .word::after{
+        content:"★";font-size:.32em;vertical-align:.5em;margin:0 .08em;color:#ffd83d;
+        -webkit-text-stroke:1px rgba(255,255,255,.9);
+        text-shadow:0 2px 6px rgba(46,84,20,.4);
+      }
+      .celebrate.show{opacity:1}
+      .confetti-layer{position:fixed;inset:0;z-index:80;pointer-events:none;overflow:hidden}
+      .confetti-layer i{
+        position:absolute;top:-4vh;width:9px;height:14px;border-radius:2px;
+        background:var(--c,#ff5d8f);opacity:0;
+        animation:confettiFall var(--d,2.2s) ease-in var(--dl,0s) forwards;
+      }
+      .confetti-layer i.round{border-radius:50%;width:10px;height:10px}
+      @keyframes confettiFall{
+        0%{opacity:0;transform:translate3d(0,0,0) rotate(0deg)}
+        8%{opacity:1}
+        92%{opacity:1}
+        100%{opacity:0;transform:translate3d(var(--x,0px),108vh,0) rotate(var(--r,540deg))}
+      }
       .stage{
         position:relative;width:100%;height:100%;min-height:230px;margin:0 auto;
         touch-action:manipulation;
@@ -138,7 +300,9 @@
         display:flex;align-items:center;justify-content:center;
         line-height:1;user-select:none;
         transform:rotate(var(--rot,0deg));
-        transition:filter .15s ease, opacity .15s ease, transform .12s ease;
+        /* no transition at all: a tapped fruit vanishes instantly and
+           a fruit that gets uncovered changes shade instantly — any
+           animated transform/filter here reads as the fruit wobbling */
         padding:0;
       }
       .tile .fruit-img{
@@ -151,15 +315,28 @@
       .slot img{width:64%;height:84%;object-fit:contain;pointer-events:none;filter:saturate(1.05);opacity:.94}
       div.tile{pointer-events:none}
       .tile.free{cursor:pointer}
-      @media (hover:hover){
-        .tile.free:hover{transform:translateY(-4px) rotate(var(--rot,0deg)) scale(1.05)}
-      }
-      .tile.free:active{transform:translateY(2px) rotate(var(--rot,0deg)) scale(.96)}
-      .tile.covered{filter:brightness(.66) saturate(.55);cursor:not-allowed}
+      /* deliberately NO hover lift and NO :active press effect: the
+         fruit must sit perfectly still until the tap takes it away.
+         Any scale/translate on tap was felt as the fruit — and with
+         it the screen — shaking. */
+      /* buried fruit is graded by how deep it sits in its pile —
+         every pile shares one spot and each layer down steps a fixed
+         17px further DOWN, so a buried fruit always peeks out from
+         directly underneath the fruit on top of it as a shaded band:
+         the layer below is a light shadow of the fruit, each layer
+         deeper a step darker, and even the bottom of a tall pile
+         keeps a visible shaded edge. The shade changes instantly
+         (no transition) when the fruit above is taken, so nothing
+         ever slides, fades or wobbles into view. */
+      .tile.d1{filter:brightness(.85) saturate(.8)}
+      .tile.d2{filter:brightness(.71) saturate(.66);opacity:.97}
+      .tile.d3{filter:brightness(.59) saturate(.53);opacity:.9}
+      .tile.d4{filter:brightness(.51) saturate(.45);opacity:.78}
+      .tile.d5{filter:brightness(.45) saturate(.39);opacity:.64}
+      .tile.covered{cursor:not-allowed}
       .tile:disabled{opacity:1;color:inherit}
-      .tile.pop{animation:pop .28s ease}
-      @keyframes pop{0%{transform:scale(.6) rotate(var(--rot,0deg))}60%{transform:scale(1.12) rotate(var(--rot,0deg))}100%{transform:scale(1) rotate(var(--rot,0deg))}}
-      .tile.gone{opacity:0;pointer-events:none;transform:scale(.4) rotate(var(--rot,0deg));transition:all .22s ease}
+      /* a taken fruit is simply gone — no shrink, no zoom-out */
+      .tile.gone{opacity:0;pointer-events:none}
 
       /* ---------- wooden trough under the meadow holding the 7 slots.
          Original CSS-drawn wood: one smooth plank — warm gradient with
@@ -168,13 +345,28 @@
          tray. The slots themselves are one even grid row, so every
          groove is the same size and on the same baseline.
          Kept deliberately shallow — the whole block under the board
-         (tray, props, actions, stats, level picker) is only about a
-         fifth of the screen, so the fruit pile and the grass own the
-         rest ---- */
+         (tray, props, stats) is only about a fifth of the screen, so
+         the fruit piles and the grass own the rest ---- */
+      /* everything under the board is rigid (flex:none): only the
+         board may flex, so nothing below it can ever change height
+         and push the meadow around */
+      .topbar,.tray-zone,.props,.mini-stats,.progress{flex:none}
       .tray-zone{margin-top:4px}
-      .tray-label{display:flex;justify-content:flex-end;align-items:baseline;font-size:11px;color:var(--ink-soft);margin:0 2px 3px}
+      /* the small hint line that used to sit above the tray is gone
+         (removed at the player's request): the tray now follows the
+         board directly, and the win dialog still states the
+         fast-clear limit, so no rule information is lost */
       .tray{
-        display:grid;grid-template-columns:repeat(7,1fr);gap:4px;align-items:stretch;
+        display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:var(--slot-h);gap:4px;align-items:stretch;
+        /* locked open at one fixed height, empty or full: the tray
+           used to size itself from its grooves (aspect-ratio rows),
+           and on the phone an EMPTY tray collapsed to a thin plank
+           that popped back open the moment a fruit landed in it —
+           every collapse/resize also resized the board above, which
+           is the whole page lurching the player kept reporting.
+           Height is now a definite length on the tray itself, so
+           there is no second, closed form left to fall into. */
+        height:calc(var(--slot-h) + 12px);min-height:calc(var(--slot-h) + 12px);max-height:calc(var(--slot-h) + 12px);
         border:2px solid var(--wood-lo);border-radius:11px;padding:4px;
         background:
           linear-gradient(180deg, rgba(255,226,170,.28) 0%, rgba(255,255,255,0) 30%, rgba(0,0,0,.14) 78%, rgba(0,0,0,.26) 100%),
@@ -185,22 +377,69 @@
           inset 0 -7px 12px rgba(52,29,4,.35),
           0 6px 14px rgba(46,84,20,.22);
       }
+      /* the groove has exactly ONE appearance, filled or empty, pair
+         or no pair, nearly full or not: it used to restyle itself
+         (lighter when filled, gold for a pair, red when nearly full),
+         and every restyle landing the moment a finger lifted made the
+         whole tray — and with it the screen — feel like it lurched
+         and rescaled. Now only the fruit itself appears or disappears
+         inside the groove; the groove never changes. */
       .slot{
-        aspect-ratio:1/0.72;border-radius:8px;background:var(--slot-bg);
+        /* definite height, not aspect-ratio: an aspect-ratio groove
+           in a stretched grid row has no height of its own when it
+           is empty on some webviews, so the row caved in whenever
+           the tray emptied. Filled or empty, the groove is now
+           exactly --slot-h tall, always. */
+        height:var(--slot-h);min-height:var(--slot-h);max-height:var(--slot-h);
+        border-radius:8px;background:var(--slot-bg);
         border:2px solid rgba(56,32,6,.55);
         box-shadow:inset 0 3px 7px rgba(30,16,2,.5), inset 0 -1px 0 rgba(255,225,170,.25);
         display:flex;align-items:center;justify-content:center;line-height:1;
       }
-      .slot.filled{border-color:rgba(56,32,6,.35);background:rgba(255,238,205,.16)}
-      .slot.danger{border-color:var(--danger);background:rgba(229,72,77,.18)}
-      .slot.matching{animation:matchPulse .3s ease 2}
-      @keyframes matchPulse{50%{transform:scale(1.14)}}
+      /* one press behaviour around the tray: nothing scales, shifts
+         or flashes while a finger is down or lifts off it, and taps
+         on the tray can never be read as a zoom gesture */
+      .tray,.slot{touch-action:manipulation}
+      button:active{transform:none}
 
-      .hold-row{display:none;margin-top:6px;align-items:center;gap:8px}
-      .hold-row.show{display:flex}
+      /* the stash row's space is ALWAYS reserved (visibility, not
+         display): when it used to appear/disappear, the board above
+         it resized and every fruit on the meadow jumped at once */
+      .hold-row{display:flex;visibility:hidden;height:36px;margin-top:6px;align-items:center;gap:8px}
+      .hold-row.show{visibility:visible}
       .hold-row span{font-size:11px;color:var(--ink-soft);white-space:nowrap}
       .hold{display:flex;gap:5px}
-      .hold .slot{width:36px;height:30px;flex:none;cursor:pointer}
+      .hold .slot{width:36px;height:30px;min-height:30px;max-height:30px;flex:none;cursor:pointer}
+
+      /* ---------- level picker strip: sits in the row between the
+         tray and the prop buttons, one chip per level, swipeable
+         sideways. A level unlocks once the one before it is beaten,
+         and beaten levels stay unlocked — tapping any unlocked chip
+         starts that level, so a lost run never forces the player
+         back to level 1. Locked chips are dimmed and inert. ------- */
+      .level-strip{
+        display:flex;gap:6px;margin-top:6px;padding:2px;
+        overflow-x:auto;overflow-y:hidden;flex:none;
+        scrollbar-width:none;-webkit-overflow-scrolling:touch;
+        touch-action:pan-x;
+      }
+      .level-strip::-webkit-scrollbar{display:none}
+      .lv-chip{
+        position:relative;flex:0 0 auto;min-width:36px;height:30px;padding:0 7px;
+        border-radius:9px;border:1px solid var(--line);
+        background:var(--panel);color:var(--ink);
+        font-size:13px;font-weight:800;line-height:1;
+        display:flex;align-items:center;justify-content:center;
+      }
+      .lv-chip.done{background:#dcf2df;border-color:#a9d8ae;color:#1e6b2f}
+      .lv-chip.done::after{content:"✓";position:absolute;top:1px;right:3px;font-size:8px;font-weight:900;color:var(--mint-deep)}
+      .lv-chip.cur{background:linear-gradient(180deg,var(--mint),var(--mint-deep));border-color:var(--mint-dark);color:#fff;box-shadow:0 3px 8px rgba(20,154,110,.35)}
+      .lv-chip.cur::after{color:#fff}
+      .lv-chip.locked{background:var(--panel-soft);color:var(--ink-soft);opacity:.55;cursor:not-allowed}
+      .lv-chip.locked::after{content:"🔒";position:absolute;top:1px;right:2px;font-size:7px}
+      @media (prefers-color-scheme: dark){
+        .lv-chip.done{background:#1d4d2a;border-color:#2f7a3e;color:#b9ecc2}
+      }
 
       /* ---------- three blue prop buttons under the trough: one slim
          row each (icon, name, uses left side by side) so the strip
@@ -217,15 +456,20 @@
       .prop b{font-size:13px;letter-spacing:.04em}
       .prop small{font-size:9px;color:rgba(255,255,255,.88)}
       .prop:disabled{opacity:.45;cursor:not-allowed}
-      .prop:not(:disabled):active{transform:scale(.96)}
+      /* brief gold flash on all three prop buttons when a banked
+         fast-clear reward lands at the start of a game, so the
+         payout is visible down here */
+      .prop.rewarded{animation:propReward .8s ease}
+      @keyframes propReward{
+        0%{box-shadow:0 0 0 0 rgba(255,180,40,0)}
+        30%{box-shadow:0 0 0 4px rgba(255,180,40,.85), 0 4px 14px rgba(255,160,20,.5);filter:brightness(1.25)}
+        100%{box-shadow:0 4px 10px rgba(20,90,160,.26)}
+      }
 
-      .actions{display:flex;gap:6px;margin-top:6px}
-      .actions .btn-main,.actions .btn-ghost{min-height:0}
       .btn-main{
         flex:1;background:var(--mint);border:none;color:#fff;font-size:13px;font-weight:700;
         border-radius:10px;padding:6px;box-shadow:0 5px 12px rgba(20,154,110,.32);
       }
-      .btn-main:active{transform:scale(.98)}
       .btn-ghost{
         background:var(--panel);border:1px solid var(--line);color:var(--ink);
         font-size:13px;font-weight:600;border-radius:10px;padding:6px 12px;
@@ -247,9 +491,9 @@
       .mask.show{display:flex}
       .dialog{
         background:var(--panel);border-radius:22px;padding:26px 22px;width:100%;max-width:340px;
-        text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:dlgIn .3s ease;
+        text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:dlgIn .25s ease;
       }
-      @keyframes dlgIn{from{transform:translateY(16px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+      @keyframes dlgIn{from{opacity:0}to{opacity:1}}
       .dialog .big{font-size:52px;line-height:1.1}
       .dialog h2{margin:8px 0 4px;font-size:22px}
       .dialog p{margin:0 0 6px;color:var(--ink-soft);font-size:14px;line-height:1.6}
@@ -262,16 +506,20 @@
       .dialog .row button{flex:1}
 
       .toast{
-        position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);
+        position:fixed;left:50%;bottom:28px;transform:translateX(-50%);
         background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:99px;
-        font-size:14px;opacity:0;pointer-events:none;transition:all .25s ease;z-index:60;
+        font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:60;
         max-width:88vw;text-align:center;
       }
-      .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+      .toast.show{opacity:1}
 
       @media (prefers-reduced-motion: reduce){
-        .tile.pop,.slot.matching,.dialog{animation:none}
-        .progress i{transition:none}
+        .dialog,.prop.rewarded{animation:none}
+        .praise.show .word{animation:none}
+        .praise,.toast,.progress i{transition:none}
+        .celebrate{transition:none}
+        .celebrate.show .word{animation:none}
+        .confetti-layer i{animation:none}
       }
     </style>
   </head>
@@ -283,11 +531,43 @@
 
       <div class="board-zone">
         <div class="stage" id="stage" aria-label="牌堆，只点没被压住的亮牌"></div>
+        <div class="praise" id="praise" aria-hidden="true">
+          <span class="word" id="praiseWord">Great!</span>
+          <span class="combo" id="praiseCombo">COMBO ×2</span>
+        </div>
+        <div class="celebrate" id="celebrate" aria-hidden="true">
+          <span class="word">Congratulations!</span>
+        </div>
       </div>
+      <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
+
+      <!-- pre-recorded praise shouts, one clip per word of the
+           four-rung ladder; played by the combo logic, never more
+           than one at a time -->
+      <audio id="auGreat" src="data:application/octet-stream;base64,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" preload="auto"></audio>
+      <audio id="auExcellent" src="data:application/octet-stream;base64,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" preload="auto"></audio>
+      <audio id="auAmazing" src="data:application/octet-stream;base64,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" preload="auto"></audio>
+      <audio id="auUnbelievable" src="data:application/octet-stream;base64,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qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqkxBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqv/7UsScg8AAAaQAAAAgAAA0gAAABKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//tSxKGDwAABpAAAACAAADSAAAAEqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqo=" preload="auto"></audio>
+      <!-- the win shout: the same bright voice as the praise clips,
+           re-rendered at 1.3× tempo so it lands short and instant,
+           played once over the fanfare when a level is cleared -->
+      <audio id="auCongrats" src="data:application/octet-stream;base64,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bPL3Ii6YjX1rN3Z5A0HLYaA/zsQfmzmldN+LDjP6tlFGejTX2tUW63L0C0kzNbkkKyi0ulUWlUvZpDsbnYpPvI0HOV6rNxooeQSs5vXsYxfrQ3KZygjUGvvYtXpdi51mcQudqallBIM+a7h/////+1DE+YALcOdBrBURabykKDWUmfzHsgx1iooq0TQlmZZNtEFQAwIg7MKEW1MFLFjqXyBHyQNxhpzH3+YF7OBQbRYqD8xeodpMX7jxRREOFw7Ig5DSeHGx7fay8f11D/U/dffxvbD7p4W6eJU1yLi+v/u5SBUzVDtncplVMTeGQo0kFAHAKkxBYyJdMIIlaral8scCQDB7HIOhEVGL0K0t0Zx2MrlEsOXxKQ3N0FPdSKOnf/pZ1YRJlC/gMuftmXT/1IU7OVBy4oCbPh8LVDUS//twxPGADq0ZS/WEACrjIuh/M4AAwU/CrdBao4YWh4MLa4nKBGQTZAg0i4gyRAQkQfomQohcR6jEJOfiZUx1NCvQ2LKPNJPOMkz+pzSMJfXwoOpKiST/vn3HdnmDazXabh28l3UtWRWViykIBiqQ6h2rPLv0nILCQUAgdSLQIHhbAes1+BJrbbGhJEwgAAohggB8bD8WQSJCd5wF6IKZxzpo6j9AwgcROtRI143CRsbL5TtuUa+JOGQE0YSAoqSCoZBYTgISGmf5aKmTrfI1TEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7UMTsAAvQ/U/9hAAJbSCo/YYNKFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+1DE7IANWPtJ55ixoSKMZPTHmNhVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//sQxNYDwAAB/gAAACAAAD/AAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+xDE1gPAAAGkAAAAIAAANIAAAARVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQ==" preload="auto"></audio>
+      <!-- the tragic ending, cut to ONE second at the player's
+           request (even the fast 1.9s cut still felt long) and
+           re-composed in the quick descending style of the
+           reference games: seven rapid minor steps down
+           (dun-dun-dun-dun-dun-dun-dun) plus one low sagging
+           tail, all inside 1.0s, an original in-house sting —
+           played once when a run is lost, under the dialog -->
+      <audio id="auLose" src="data:application/octet-stream;base64,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" preload="auto"></audio>
+      <!-- no background music: the player asked for it off
+           entirely — the game is effects and voices only -->
 
       <div class="tray-zone">
-        <p class="tray-label"><span>塞满 7 张还没凑齐 3 张，就输了</span></p>
         <div class="tray" id="tray"></div>
+        <!-- level picker: every beaten level stays unlocked and can
+             be picked again here; locked levels stay dimmed -->
+        <div class="level-strip" id="levelStrip" aria-label="选关"></div>
         <div class="hold-row" id="holdRow">
           <span>暂存区（点牌放回槽位）</span>
           <div class="hold" id="hold"></div>
@@ -300,10 +580,9 @@
         <button class="prop" id="shuffleBtn"><span class="ic">🔀</span><b>洗牌</b><small id="shuffleLeft">剩 3 次</small></button>
       </div>
 
-      <div class="actions">
-        <button class="btn-main" id="restartBtn">重新开始</button>
-        <button class="btn-ghost" id="newBtn">换一局</button>
-      </div>
+      <!-- no restart button: a level is played through — you either
+           clear it and move on, or you lose and pick another
+           unlocked level from the strip above. -->
 
       <div class="mini-stats">
         <span>关卡 <b id="statLevel">1 / 21</b></span>
@@ -327,7 +606,6 @@
           <div><b id="dlgProps">0</b><span>道具使用</span></div>
         </div>
         <div class="row">
-          <button class="btn-ghost" id="dlgRetry">重开本关</button>
           <button class="btn-main" id="dlgNext">下一关</button>
         </div>
       </div>
@@ -389,8 +667,29 @@
         var propsUsed = 0;
         var moves = 0, cleared = 0, totalTiles = 0;
         var startedAt = 0, elapsed = 0, timerId = null, playing = false;
+        var busy = false;      // input lock while a triple is resolving
+        var gameSeq = 0;       // bumped on every new game; kills stale timeouts
+        var loseStuck = false; // lose dialog wording: dead end vs full tray
         var best = {};         // per-level best seconds (session only)
         var soundOn = true;
+        // praise is graded by SPEED, not by streak length: each triple
+        // that lands within FAST_GAP_MS of the previous one climbs one
+        // rung of the ladder; a slower triple (or the first) is "Great!"
+        var FAST_GAP_MS = 2000;
+        var speedChain = 0;    // consecutive fast triples (1 = the opening Great)
+        var lastMatchAt = 0;   // Date.now() of the previous triple
+        // prop rewards are earned by SPEED over the whole level, not by
+        // a lucky streak mid-game: clear the level inside its time
+        // limit (CLEAR_SEC_PER_TRIPLE seconds per triple — the pace of
+        // a run full of fast Unbelievable combos) and the NEXT game
+        // starts with +1 use on every prop. A slower clear earns
+        // nothing at all. The bonus is banked, never stacked: at most
+        // one pending +1 at a time.
+        var CLEAR_SEC_PER_TRIPLE = 5;
+        var pendingBonus = false;  // a fast clear banked +1 for the next game
+        var winFast = false;       // the win being shown beat the limit
+        var winLimit = 0;          // that limit, for the dialog wording
+        function clearTimeLimit(){ return Math.ceil(totalTiles / 3) * CLEAR_SEC_PER_TRIPLE; }
 
         /* ============ dom ============ */
         var stage = document.getElementById("stage");
@@ -425,13 +724,299 @@
           o.connect(g); g.connect(c.destination);
           o.start(t); o.stop(t+dur+0.05);
         }
+        /* ---- original bright sound kit, synthesised live ---------
+           Every effect below is composed and rendered in code at
+           tap time — no sampled or borrowed audio files. The house
+           style follows the cheerful match-3 sound language the
+           player asked to echo: a match rings like a xylophone bar
+           struck under glass bells with a wind-chime sparkle on
+           top, fast chains climb the pentatonic scale rung by
+           rung, a cleared level gets a little trumpet fanfare,
+           and a lost run drops away in quick descending notes.
+           Light, bright and healing throughout — nothing harsh. */
+        // glass bell: pure sine fundamental + inharmonic partials
+        // (×2.76, ×5.4) that die away faster than the fundamental,
+        // over a long gentle decay — the "glass" ring
+        function bellTone(freq, delay, vol, dur){
+          if(!soundOn) return;
+          var c = ac(); if(!c) return;
+          var t = c.currentTime + (delay||0);
+          var d = dur || 0.55;
+          [[1, 1], [2.76, 0.38], [5.4, 0.13]].forEach(function(part){
+            var o = c.createOscillator(), g = c.createGain();
+            o.type = "sine";
+            o.frequency.setValueAtTime(freq * part[0], t);
+            var pd = d * (part[0] === 1 ? 1 : 0.45);
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime((vol||0.15) * part[1], t + 0.006);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + pd);
+            o.connect(g); g.connect(c.destination);
+            o.start(t); o.stop(t + pd + 0.05);
+          });
+        }
+        // xylophone bar: woody fundamental with a strong ×3.9
+        // partial and a very fast decay — the crisp "tok" body
+        // under every bell
+        function xyloTone(freq, delay, vol){
+          if(!soundOn) return;
+          var c = ac(); if(!c) return;
+          var t = c.currentTime + (delay||0);
+          [[1, "sine", 1, 0.16], [3.9, "triangle", 0.3, 0.05]].forEach(function(part){
+            var o = c.createOscillator(), g = c.createGain();
+            o.type = part[1];
+            o.frequency.setValueAtTime(freq * part[0], t);
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime((vol||0.16) * part[2], t + 0.004);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + part[3]);
+            o.connect(g); g.connect(c.destination);
+            o.start(t); o.stop(t + part[3] + 0.05);
+          });
+        }
+        // one struck note of the match kit: xylophone body + glass
+        // bell ring together, the pairing that makes a match sound
+        // crisp and sweet instead of like a plain beep
+        function matchNote(freq, delay, vol){
+          xyloTone(freq, delay, vol);
+          bellTone(freq, delay, vol * 0.85, 0.5);
+        }
+        // wind-chime sparkle: a few very high pentatonic bells
+        // scattered over ~0.3s with long decays, played over the
+        // top matches and the fanfare — never twice the same
+        var CHIME_FREQS = [1567.98, 1760, 2093, 2349.32, 2637.02, 3135.96];
+        function chimeSparkle(delay, count, vol){
+          var n = count || 4;
+          for(var i = 0; i < n; i++){
+            var f = CHIME_FREQS[Math.floor(Math.random() * CHIME_FREQS.length)];
+            bellTone(f, (delay||0) + Math.random() * 0.3, (vol||0.05) * (0.7 + Math.random() * 0.6), 0.9);
+          }
+        }
+        // little trumpet: sawtooth through a lowpass that opens
+        // with the note's attack (the brass "wah" bloom), held a
+        // touch longer than a bell — fanfare only
+        function brassTone(freq, delay, dur, vol){
+          if(!soundOn) return;
+          var c = ac(); if(!c) return;
+          var t = c.currentTime + (delay||0);
+          var o = c.createOscillator(), flt = c.createBiquadFilter(), g = c.createGain();
+          o.type = "sawtooth";
+          o.frequency.setValueAtTime(freq, t);
+          flt.type = "lowpass"; flt.Q.value = 1.1;
+          flt.frequency.setValueAtTime(freq * 1.6, t);
+          flt.frequency.exponentialRampToValueAtTime(freq * 4.5, t + 0.07);
+          flt.frequency.exponentialRampToValueAtTime(freq * 2.2, t + dur);
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(vol||0.11, t + 0.045);
+          g.gain.setValueAtTime(vol||0.11, t + Math.max(0.05, dur - 0.07));
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+          o.connect(flt); flt.connect(g); g.connect(c.destination);
+          o.start(t); o.stop(t + dur + 0.05);
+        }
+        // the ladder every match climbs: C major pentatonic, two
+        // octaves — bright and consonant at any rung, so a rising
+        // chain always sounds like good news
+        var MATCH_SCALE = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51, 1567.98, 1760];
         function sfx(name){
-          if(name==="tap"){ tone(520,.09,"triangle",.14); }
-          else if(name==="match"){ tone(660,.12,"sine",.16); tone(880,.14,"sine",.16,.07); tone(1180,.18,"sine",.14,.14); }
-          else if(name==="win"){ [523,659,784,1046,1318].forEach(function(f,i){ tone(f,.22,"triangle",.16,i*.09); }); }
+          if(name==="tap"){
+            // a single soft wooden tick with a glass edge
+            xyloTone(659.25, 0, 0.13);
+            bellTone(1318.51, 0, 0.045, 0.22);
+          }
+          else if(name==="match"){
+            matchNote(MATCH_SCALE[2], 0, 0.16);
+            matchNote(MATCH_SCALE[4], 0.06, 0.16);
+            matchNote(MATCH_SCALE[6], 0.12, 0.15);
+          }
+          else if(name==="win"){
+            // cheerful trumpet fanfare: C–E–G up, a held high C
+            // with a G sparkle under it, bells and a chime wash
+            // over the top — celebration, not just a jingle.
+            // Snapped tighter again with the rest of the win beat:
+            // the steps land 0.06s apart and the held note is
+            // shorter still, so the fanfare hits like an instant
+            // victory sting instead of strolling
+            brassTone(523.25, 0, 0.09, 0.11);
+            brassTone(659.25, 0.06, 0.09, 0.11);
+            brassTone(783.99, 0.12, 0.09, 0.12);
+            brassTone(1046.5, 0.18, 0.26, 0.13);
+            brassTone(783.99, 0.18, 0.26, 0.06);
+            bellTone(1046.5, 0.18, 0.07, 0.5);
+            bellTone(1318.51, 0.24, 0.06, 0.5);
+            chimeSparkle(0.16, 5, 0.05);
+          }
           else if(name==="lose"){ tone(320,.25,"sawtooth",.07); tone(210,.4,"sawtooth",.07,.14); }
-          else if(name==="prop"){ tone(440,.1,"triangle",.12); tone(587,.12,"triangle",.12,.06); }
-          else if(name==="err"){ tone(180,.15,"square",.06); }
+          else if(name==="prop"){
+            matchNote(659.25, 0, 0.11);
+            matchNote(880, 0.06, 0.11);
+          }
+          else if(name==="err"){
+            // a soft low wooden thud, kept gentle — a covered
+            // tile is a nudge, not an alarm
+            xyloTone(196, 0, 0.12);
+            tone(147, .12, "sine", .07);
+          }
+          // THE elimination sound, exactly as the player specced
+          // it: a SHORT melody on the crisp pairing of xylophone
+          // and wind chime — three quick wooden-bell notes
+          // climbing, then one high glass bell ringing out over
+          // the top, the whole figure done in about a third of a
+          // second. And on a combo chain ("暴击") the melody
+          // climbs a tier in PITCH with every rung: each faster
+          // triple starts two pentatonic steps higher than the
+          // last, and the wind-chime sparkle thickens as the
+          // chain grows, so a hot streak literally rings higher
+          // and brighter note for note
+          else if(name==="combo"){
+            var start = Math.min((Math.max(speedChain, 1) - 1) * 2, 5);
+            matchNote(MATCH_SCALE[start], 0, 0.17);
+            matchNote(MATCH_SCALE[start + 2], 0.05, 0.17);
+            matchNote(MATCH_SCALE[start + 4], 0.10, 0.16);
+            bellTone(MATCH_SCALE[start + 4], 0.16, 0.07, 0.6);
+            if(speedChain >= 2) chimeSparkle(0.08, 2 + Math.min(speedChain, 3), 0.045);
+          }
+        }
+
+        /* ============ praise voice + popup ============ */
+        // fixed praise ladder: the word shown is exactly the word the
+        // matching clip says. The ladder is the four-rung set of the
+        // cheerful reference games — Great · Excellent · Amazing ·
+        // Unbelievable — and the FIRST triple of a chain already
+        // lands on Great: there is no Good rung. The rung is chosen
+        // by speed: a triple that follows the previous one within
+        // FAST_GAP_MS climbs a rung; a slow triple or the first one
+        // of the game restarts at Great. The Great clip says
+        // "Great!" and nothing else — an earlier take opened with
+        // a "Wow!" gasp and the player asked for it cut, so the
+        // recording itself was trimmed to the word alone. The
+        // clips are a CHILD's voice — one bright,
+        // high-pitched, happy little-girl voice for every rung,
+        // re-recorded for this pass in a livelier, more playful
+        // take and pitched a touch up so it reads as a young girl
+        // rather than an adult — each rung spoken a touch faster
+        // than the one below (109→121%), so the energy rises gently
+        // up the ladder while the voice itself stays the same. The
+        // win shout uses the same child voice, so every spoken word
+        // in the game comes from one little girl. All clips are
+        // original recordings made for this game; only the style
+        // is borrowed.
+        // The popup climbs with it: every rung sets a bigger --ps
+        // size and a heavier t1..t4 outline/shadow class, so the
+        // hierarchy is visible on screen, not just heard. The
+        // COLOUR does not climb: every rung is the same solid
+        // yellow, flat, no gradient — the player asked for one
+        // pure colour from the first tier to the last.
+        // The word pops in with a quick overshoot bounce instead
+        // of fading. "COMBO ×n" is shown on screen only — never
+        // spoken.
+        var PRAISE = [
+          { word: "Great!",        size: "clamp(22px,6.2vw,28px)", au: "auGreat" },
+          { word: "Excellent!",    size: "clamp(26px,7.2vw,33px)", au: "auExcellent" },
+          { word: "Amazing!",      size: "clamp(29px,8vw,37px)",    au: "auAmazing" },
+          { word: "Unbelievable!", size: "clamp(33px,9.2vw,43px)", au: "auUnbelievable" }
+        ];
+        var praiseEl = document.getElementById("praise");
+        var praiseWordEl = document.getElementById("praiseWord");
+        var praiseComboEl = document.getElementById("praiseCombo");
+        var praiseTimer = null;
+        var currentVoice = null;
+        function playVoice(id, delayMs){
+          if(!soundOn) return;
+          var el = document.getElementById(id);
+          if(!el) return;
+          var start = function(){
+            if(!soundOn) return;
+            if(currentVoice && currentVoice !== el){
+              try{ currentVoice.pause(); currentVoice.currentTime = 0; }catch(e){}
+            }
+            currentVoice = el;
+            try{ el.currentTime = 0; el.play(); }catch(e){}
+          };
+          if(delayMs) setTimeout(start, delayMs); else start();
+        }
+        // the tragic ending for a lost run: one pre-composed clip,
+        // cut to exactly ONE second at the player's request and
+        // re-composed quick and descending in the reference
+        // games' manner — seven rapid minor steps down
+        // (dun-dun-dun-dun-dun-dun-dun) plus a low sagging tail,
+        // done. The line of cuts behind it: a slow ~5s sad phrase
+        // dragged, a fast ~1.9s sting still felt long; at 1.0s
+        // the tragedy lands and is over. It replaces the old
+        // two-tone synth buzz, which sounded like an error beep
+        // rather than an ending
+        var loseMusic = document.getElementById("auLose");
+        function playLoseMusic(){
+          if(currentVoice){ try{ currentVoice.pause(); }catch(e){} currentVoice = null; }
+          if(!soundOn || !loseMusic) return;
+          try{ loseMusic.currentTime = 0; loseMusic.play(); }catch(e){}
+        }
+        function stopLoseMusic(){
+          if(loseMusic){ try{ loseMusic.pause(); loseMusic.currentTime = 0; }catch(e){} }
+        }
+
+        /* ============ no background music ============ */
+        // the player asked for the background music OFF, entirely:
+        // there is no music loop, no element and no starter — the
+        // game plays effects and voices only, and the sound toggle
+        // below governs just those.
+
+        /* ============ win celebration ============ */
+        // clearing a level gets a real celebration: the recorded
+        // voice shouts "Congratulations!" over the win fanfare, the
+        // rose-red word pops over the meadow, and confetti rains
+        // over the whole screen. The final triple's praise popup
+        // steps aside so the two never overlap. Confetti pieces
+        // animate only their own transforms inside a fixed overlay
+        // — the page layout never moves — and reduced-motion skips
+        // the rain entirely, keeping the word and the voice.
+        // The whole beat was cut by half a second at the player's
+        // request and made snappier throughout, then cut once more
+        // ("make Congratulations shorter — instant victory"): the
+        // voice clip itself was re-rendered at 1.3× tempo (0.89s,
+        // was 1.16s) and starts at delay ZERO, the word is gone by
+        // 0.6s, the dialog lands at 0.65s and the confetti falls
+        // faster, layer cleared at 2.4s.
+        var celebrateEl = document.getElementById("celebrate");
+        var confettiLayer = document.getElementById("confettiLayer");
+        var celebrateTimer = null;
+        var CONFETTI_COLORS = ["#ff5d8f","#ffb300","#3ecf6f","#2f9df4","#8e24c9","#ff7a1a","#ffd83d"];
+        function celebrate(){
+          praiseEl.classList.remove("show");
+          clearTimeout(praiseTimer);
+          playVoice("auCongrats", 0);
+          celebrateEl.classList.remove("show");
+          void celebrateEl.offsetWidth;
+          celebrateEl.classList.add("show");
+          clearTimeout(celebrateTimer);
+          celebrateTimer = setTimeout(function(){ celebrateEl.classList.remove("show"); }, 600);
+          if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+          confettiLayer.innerHTML = "";
+          for(var i = 0; i < 30; i++){
+            var p = document.createElement("i");
+            if(i % 3 === 0) p.className = "round";
+            p.style.left = (2 + Math.random() * 96) + "%";
+            p.style.setProperty("--c", CONFETTI_COLORS[i % CONFETTI_COLORS.length]);
+            p.style.setProperty("--x", (Math.random() * 120 - 60).toFixed(0) + "px");
+            p.style.setProperty("--r", (360 + Math.random() * 540).toFixed(0) + "deg");
+            p.style.setProperty("--d", (1.0 + Math.random() * 0.9).toFixed(2) + "s");
+            p.style.setProperty("--dl", (Math.random() * 0.2).toFixed(2) + "s");
+            confettiLayer.appendChild(p);
+          }
+          setTimeout(function(){ confettiLayer.innerHTML = ""; }, 2400);
+        }
+        function praise(){
+          var rung = Math.min(speedChain, PRAISE.length);
+          var tier = PRAISE[rung - 1];
+          sfx("combo");
+          playVoice(tier.au, 0);
+          praiseWordEl.textContent = tier.word;
+          praiseComboEl.textContent = speedChain >= 2 ? ("COMBO ×" + speedChain) : "";
+          praiseEl.style.setProperty("--ps", tier.size);
+          for(var k = 1; k <= PRAISE.length; k++) praiseEl.classList.remove("t" + k);
+          praiseEl.classList.add("t" + rung);
+          praiseEl.classList.remove("show");
+          void praiseEl.offsetWidth;   // commit the fade-out state before fading back in
+          praiseEl.classList.add("show");
+          clearTimeout(praiseTimer);
+          praiseTimer = setTimeout(function(){ praiseEl.classList.remove("show"); }, 1100);
         }
 
         /* ============ helpers ============ */
@@ -467,42 +1052,128 @@
         function isUnlocked(n){
           return n === 1 || !!clearedLevels[n - 1];
         }
+        var levelStrip = document.getElementById("levelStrip");
         function renderLevels(){
           statLevel.textContent = level + " / " + LEVELS.length;
+          levelStrip.innerHTML = "";
+          for(var n = 1; n <= LEVELS.length; n++){
+            (function(n){
+              var chip = document.createElement("button");
+              chip.type = "button";
+              chip.className = "lv-chip";
+              chip.textContent = n;
+              var unlocked = isUnlocked(n);
+              if(clearedLevels[n]) chip.classList.add("done");
+              if(n === level) chip.classList.add("cur");
+              if(!unlocked) chip.classList.add("locked");
+              chip.setAttribute("aria-label", unlocked ? ("第 " + n + " 关") : ("第 " + n + " 关，未解锁"));
+              chip.addEventListener("click", function(){ goLevel(n); });
+              levelStrip.appendChild(chip);
+            })(n);
+          }
+          var cur = levelStrip.querySelector(".cur");
+          if(cur){
+            levelStrip.scrollLeft = cur.offsetLeft - levelStrip.clientWidth / 2 + cur.clientWidth / 2;
+          }
+        }
+        // jump to any unlocked level from the strip: beaten levels
+        // stay unlocked for the whole session, so a lost run never
+        // sends the player back to level 1 — they pick up again at
+        // any level they have already opened
+        function goLevel(n){
+          if(!isUnlocked(n)){
+            sfx("err");
+            toast("第 " + n + " 关还没解锁，先通关第 " + (n - 1) + " 关");
+            return;
+          }
+          if(n === level && playing){
+            toast("正在打第 " + n + " 关");
+            return;
+          }
+          level = n;
+          newGame();
         }
 
+        // how far each buried layer steps DOWN under the fruit above
+        // it: big enough that every layer shows as its own shaded
+        // band under the pile — the "shadow underneath" that tells
+        // the player how deep the pile goes
+        var PEEK_Y = 17;
+        function gridFor(n){
+          if(n <= 9)  return [3, 3];
+          if(n <= 12) return [3, 4];
+          if(n <= 16) return [4, 4];
+          if(n <= 20) return [4, 5];
+          return [4, 6];
+        }
         function genPositions(count, layers){
-          // Meadow layout, like the reference: the pile is dealt onto a
-          // 5x6 grid that sits in the MIDDLE of the grass — a patch about
-          // 77% of the stage wide and 77% tall, centred both ways, so open
-          // lawn shows all around the heap. Cells are shuffled per layer;
-          // a small per-layer shift + jitter keeps layers from lining up
-          // exactly, so the pile still reads as stacked, not printed.
-          var COLS = 5, ROWS = 6;
-          var stepX = 54, stepY = 62;
-          var playW = TILE_W + (COLS - 1) * stepX;   // 308
-          var playH = TILE_H + (ROWS - 1) * stepY;   // 402
-          var baseX = Math.round((STAGE_W - playW) / 2);   // 46
-          var baseY = Math.round((STAGE_H - playH) / 2);   // 59
+          // The whole level dealt at once as a field of PILES spread
+          // over the whole meadow. Two earlier deals failed in
+          // opposite ways: scattering each layer over one wide grid
+          // left buried fruit sitting BESIDE the fruit covering it
+          // (a detached dark blob — the "断层"), and stacking every
+          // pile at the level's max depth produced only a handful of
+          // piles, so the board showed just a few fruit.
+          // This deal instead:
+          //  - uses MANY piles of moderate height (about half the
+          //    level's layer cap), spread on a grid that fills the
+          //    meadow — level 1 shows 12 pile tops, the last level
+          //    24, each with its shaded layers underneath;
+          //  - steps every buried layer a fixed 17px straight DOWN
+          //    and never sideways, so a buried fruit
+          //    always peeks out from directly underneath the fruit
+          //    on top of it as a shadow band, layer under layer;
+          //  - gives every tile a single global z: piles nearer the
+          //    bottom of the screen sit wholly in front of piles
+          //    behind them, and inside a pile the top fruit is wholly
+          //    in front of the ones below. Occlusion is consistent
+          //    everywhere, so no fruit ever clips through another
+          //    (the old per-pile layer numbers interleaved between
+          //    neighbouring piles — that interleaving WAS the 穿模).
+          var avgH = Math.max(2, Math.round(layers * 0.5));
+          var grid = gridFor(Math.ceil(count / avgH));
+          var COLS = grid[0], ROWS = grid[1];
+          var nStacks = Math.min(Math.ceil(count / avgH), COLS * ROWS);
+          var baseH = Math.floor(count / nStacks);
+          var rem = count - baseH * nStacks;
+          var heights = [];
+          for(var s=0; s<nStacks; s++) heights.push(baseH + (s < rem ? 1 : 0));
+          shuffleArr(heights);
+          var maxH = Math.max.apply(null, heights);
+          var maxPeek = (maxH - 1) * PEEK_Y;
+
+          var stepX = COLS > 1 ? Math.min(96, (STAGE_W - TILE_W - 16) / (COLS - 1)) : 0;
+          var stepY = ROWS > 1 ? Math.min(108, (STAGE_H - TILE_H - 30 - maxPeek) / (ROWS - 1)) : 0;
+          var playW = TILE_W + (COLS - 1) * stepX;
+          var playH = TILE_H + (ROWS - 1) * stepY + maxPeek;
+          var baseX = Math.round((STAGE_W - playW) / 2);
+          var baseY = Math.round((STAGE_H - playH) / 2);
+
           var cells = [];
           for(var gy=0; gy<ROWS; gy++) for(var gx=0; gx<COLS; gx++) cells.push({gx:gx, gy:gy});
+          shuffleArr(cells);
 
           var pos = [];
-          var perLayer = Math.ceil(count / layers);
-          for(var L=0; L<layers; L++){
-            var n = (L === layers-1) ? (count - perLayer*(layers-1)) : perLayer;
-            if(n <= 0) continue;
-            var order = shuffleArr(cells.slice());
-            var offX = (L % 2) * stepX * 0.32;
-            var offY = (L % 3) * stepY * 0.22;
-            for(var i=0; i<n && i<order.length; i++){
-              var x = baseX + order[i].gx * stepX + offX + (Math.random()*14 - 7);
-              var y = baseY + order[i].gy * stepY + offY + (Math.random()*16 - 8);
+          for(var p=0; p<nStacks; p++){
+            var h = heights[p];
+            var cell = cells[p];
+            var cx = baseX + cell.gx * stepX;
+            var cy = baseY + cell.gy * stepY;
+            var pileZ = (cell.gy * 10 + cell.gx) * 100;
+            for(var L=0; L<h; L++){
+              var down = h - 1 - L;   // layers beneath this tile
+              // every layer at the pile's exact x, stepping straight
+              // DOWN only: a sideways lean multiplied by depth (and
+              // the old random jitter) drifted deep layers tens of
+              // pixels into the neighbouring pile, where they sliced
+              // through its fruit — the 穿模 players kept reporting
+              var x = cx;
+              var y = cy + PEEK_Y * down;
               if(x < 0) x = 0;
               if(y < 0) y = 0;
               if(x + TILE_W > STAGE_W) x = STAGE_W - TILE_W;
               if(y + TILE_H > STAGE_H) y = STAGE_H - TILE_H;
-              pos.push({x: Math.round(x), y: Math.round(y), layer: L});
+              pos.push({x: Math.round(x), y: Math.round(y), layer: L, stack: p, z: pileZ + L});
             }
           }
           return pos;
@@ -524,29 +1195,73 @@
           shuffleArr(types);
 
           tiles = positions.map(function(p, idx){
-            return { id: idx, type: types[idx], x: p.x, y: p.y, layer: p.layer, removed: false, el: null };
+            return { id: idx, type: types[idx], x: p.x, y: p.y, layer: p.layer, stack: p.stack, z: p.z, removed: false, el: null };
           });
           tray = []; hold = []; history = [];
           props = { undo: PROP_MAX, shuffle: PROP_MAX, stash: PROP_MAX };
+          var bonusApplied = false;
+          if(pendingBonus){
+            // last game was cleared inside its time limit: the banked
+            // reward lands now, +1 use on every prop for this game
+            pendingBonus = false; bonusApplied = true;
+            props.undo++; props.shuffle++; props.stash++;
+          }
           propsUsed = 0; moves = 0; cleared = 0;
+          speedChain = 0; lastMatchAt = 0;
+          praiseEl.classList.remove("show");
+          celebrateEl.classList.remove("show");
+          confettiLayer.innerHTML = "";
+          if(currentVoice){ try{ currentVoice.pause(); }catch(e){} currentVoice = null; }
+          stopLoseMusic();
+          gameSeq++; busy = false; loseStuck = false;
           elapsed = 0; startedAt = Date.now(); playing = true;
           mask.classList.remove("show");
           renderLevels();
           renderBoard();
           renderTray(); renderHold(); renderStats(); renderProps();
           startTimer();
+          if(bonusApplied){
+            setTimeout(function(){
+              sfx("prop");
+              toast("极速过关奖励到账：本关移出、撤回、洗牌各 +1 次！");
+              ["undoBtn","shuffleBtn","stashBtn"].forEach(function(id){
+                var b = document.getElementById(id);
+                b.classList.remove("rewarded");
+                void b.offsetWidth;
+                b.classList.add("rewarded");
+              });
+            }, 90);
+          }
         }
 
         /* ============ board logic ============ */
-        function isCovered(tile){
+        // how deep a tile is buried (0 = on the surface, free to
+        // tap), judged with the SAME global z that paints the tiles:
+        // a tile is covered only by a tile that is actually drawn in
+        // front of it and overlaps it closely. Inside its own pile
+        // the depth is the number of layers still above it (that is
+        // what grades the shadow); a tile from a pile in front can
+        // also sit on it, counting as one layer. Neighbouring piles
+        // are spaced wider than these thresholds, so a pile top is
+        // always free — and what the player sees is exactly what the
+        // tap test sees, no fruit hidden or exposed by mistake.
+        function coverDepth(tile){
+          var d = 0;
           for(var i=0;i<tiles.length;i++){
             var o = tiles[i];
-            if(o.removed || o.id === tile.id || o.layer <= tile.layer) continue;
-            // cover test stays at ~2/3 of the (now bigger) tile, so enlarging
-            // the fruit doesn't suddenly bury every tile under its neighbours
-            if(Math.abs(o.x - tile.x) < TILE_W*0.68 && Math.abs(o.y - tile.y) < TILE_H*0.72) return true;
+            if(o.removed || o.id === tile.id || o.z <= tile.z) continue;
+            if(Math.abs(o.x - tile.x) < TILE_W*0.62 && Math.abs(o.y - tile.y) < TILE_H*0.58){
+              var dd = (o.stack === tile.stack) ? (o.layer - tile.layer) : 1;
+              if(dd > d) d = dd;
+            }
           }
-          return false;
+          return d;
+        }
+        function isCovered(tile){ return coverDepth(tile) > 0; }
+        var DEPTH_CLASSES = ["d1","d2","d3","d4","d5"];
+        function setDepthClass(el, depth){
+          DEPTH_CLASSES.forEach(function(c){ el.classList.remove(c); });
+          if(depth > 0) el.classList.add("d" + Math.min(depth, 5));
         }
         function remainingCount(){
           var n = 0;
@@ -568,13 +1283,15 @@
           im.className = "fruit-img";
           d.appendChild(im);
           d.style.setProperty("--lift", t.layer);
-          // each fruit tossed into the pile at its own slight angle
-          d.style.setProperty("--rot", (((t.id * 37 + t.layer * 13) % 9) - 4) + "deg");
+          // one slight angle per pile, shared by every layer in it,
+          // so a buried fruit's silhouette stays aligned with the
+          // fruit covering it instead of a corner poking out sideways
+          d.style.setProperty("--rot", (((t.stack * 29) % 7) - 3) + "deg");
           d.style.left = (t.x/STAGE_W*100) + "%";
           d.style.top = (t.y/STAGE_H*100) + "%";
           d.style.width = (TILE_W/STAGE_W*100) + "%";
           d.style.height = (TILE_H/STAGE_H*100) + "%";
-          d.style.zIndex = t.layer + 1;
+          d.style.zIndex = t.z + 1;
           return d;
         }
         function swapTileEl(t, interactive){
@@ -584,6 +1301,7 @@
           else {
             d.classList.toggle("covered", !interactive);
             d.classList.toggle("free", interactive);
+            setDepthClass(d, coverDepth(t));
           }
           if(old && old.parentNode) old.parentNode.replaceChild(d, old);
           else stage.appendChild(d);
@@ -591,7 +1309,7 @@
         }
         function renderBoard(){
           stage.innerHTML = "";
-          var sorted = tiles.slice().sort(function(a,b){ return a.layer - b.layer; });
+          var sorted = tiles.slice().sort(function(a,b){ return a.z - b.z; });
           sorted.forEach(function(t){
             t.el = buildTileEl(t, true);
             stage.appendChild(t.el);
@@ -606,19 +1324,21 @@
               else t.el.classList.add("gone");
               return;
             }
-            var cov = isCovered(t);
+            var depth = coverDepth(t);
+            var cov = depth > 0;
             var isBtn = t.el.tagName === "BUTTON";
             if(cov && isBtn) swapTileEl(t, false);
             else if(!cov && !isBtn) swapTileEl(t, true);
             else {
               t.el.classList.toggle("covered", cov);
               t.el.classList.toggle("free", !cov);
+              setDepthClass(t.el, depth);
             }
           });
         }
 
         function onTileTap(id){
-          if(!playing) return;
+          if(!playing || busy) return;
           var t = tiles[id];
           if(!t || t.removed) return;
           if(isCovered(t)){ sfx("err"); toast("这张牌被压住了，先消掉上面的牌"); return; }
@@ -651,20 +1371,51 @@
           // triple match?
           var same = tray.filter(function(x){ return tiles[x].type === t.type; });
           if(same.length === 3){
-            setTimeout(function(){
-              tray = tray.filter(function(x){ return tiles[x].type !== t.type; });
-              cleared += 3;
-              sfx("match");
-              renderTray(); renderStats();
-              checkEnd();
-            }, 240);
+            resolveMatch(t.type);
           } else {
+            // ordinary taps don't touch the praise ladder: only the
+            // time gap between triples decides the next word
             checkEnd();
           }
         }
 
+        // Remove exactly the three tiles that formed the triple — by id,
+        // never "every tile of this type currently in the tray". Input is
+        // locked while the match animation runs: the old code filtered by
+        // type inside a bare 240ms timeout, so a fast extra tap of the
+        // same fruit (or a stash / shuffle) inside that window made the
+        // delayed cleanup swallow tiles it shouldn't, while cleared only
+        // went up by 3. Those tiles vanished for good, the board emptied
+        // with an unmatchable leftover in the tray, and the game hung
+        // with no win and no loss.
+        function resolveMatch(type){
+          var ids = tray.filter(function(x){ return tiles[x].type === type; }).slice(0, 3);
+          if(ids.length < 3) return;
+          busy = true;
+          renderProps();
+          var seq = gameSeq;
+          setTimeout(function(){
+            if(seq !== gameSeq) return;   // a new game started meanwhile
+            busy = false;
+            tray = tray.filter(function(x){ return ids.indexOf(x) === -1; });
+            cleared += 3;
+            // speed grading: this triple climbs the praise ladder only
+            // if it landed within FAST_GAP_MS of the previous triple;
+            // otherwise the chain restarts at Great
+            var now = Date.now();
+            speedChain = (lastMatchAt && now - lastMatchAt <= FAST_GAP_MS) ? speedChain + 1 : 1;
+            lastMatchAt = now;
+            // the chain only drives the praise word and voice now —
+            // prop rewards are decided by the whole level's clear
+            // time when the game is won (see winGame)
+            praise();
+            renderTray(); renderStats();
+            checkEnd();
+          }, 240);
+        }
+
         function checkEnd(){
-          if(!playing) return;
+          if(!playing || busy) return;
           if(remainingCount() === 0 && tray.length === 0 && hold.length === 0){
             winGame();
           } else if(tray.length >= 7){
@@ -672,24 +1423,26 @@
             var counts = {};
             var hasTriple = false;
             tray.forEach(function(id){ var ty = tiles[id].type; counts[ty]=(counts[ty]||0)+1; if(counts[ty]>=3) hasTriple = true; });
-            if(!hasTriple) loseGame();
+            if(!hasTriple) loseGame(false);
+          } else if(remainingCount() === 0 && hold.length === 0 && tray.length > 0){
+            // safety net: nothing left to tap and nothing stashed, yet the
+            // tray still holds tiles that can never form a triple — end the
+            // game instead of leaving the player on an empty meadow
+            var c2 = {};
+            var triple2 = false;
+            tray.forEach(function(id){ var ty = tiles[id].type; c2[ty]=(c2[ty]||0)+1; if(c2[ty]>=3) triple2 = true; });
+            if(!triple2) loseGame(true);
           }
         }
 
         /* ============ tray / hold rendering ============ */
         function renderTray(){
           trayEl.innerHTML = "";
-          var counts = {};
-          tray.forEach(function(id){ var ty = tiles[id].type; counts[ty]=(counts[ty]||0)+1; });
           for(var i=0;i<7;i++){
             var s = document.createElement("div");
             s.className = "slot";
             if(i < tray.length){
-              var ty = tiles[tray[i]].type;
-              s.classList.add("filled");
-              s.appendChild(faceImg(ty));
-              if(counts[ty] === 2) s.classList.add("matching");
-              if(tray.length >= 6 && counts[ty] < 2) s.classList.add("danger");
+              s.appendChild(faceImg(tiles[tray[i]].type));
             }
             trayEl.appendChild(s);
           }
@@ -699,7 +1452,7 @@
           holdEl.innerHTML = "";
           hold.forEach(function(id){
             var s = document.createElement("button");
-            s.className = "slot filled";
+            s.className = "slot";
             s.type = "button";
             s.appendChild(faceImg(tiles[id].type));
             s.setAttribute("aria-label", "放回槽位");
@@ -708,7 +1461,7 @@
           });
         }
         function returnFromHold(id){
-          if(!playing) return;
+          if(!playing || busy) return;
           if(tray.length >= 7){ sfx("err"); toast("槽位满了，先消除一些再放回"); return; }
           hold = hold.filter(function(x){ return x !== id; });
           var ty = tiles[id].type;
@@ -721,12 +1474,10 @@
           renderTray(); renderHold();
           var same = tray.filter(function(x){ return tiles[x].type === ty; });
           if(same.length === 3){
-            setTimeout(function(){
-              tray = tray.filter(function(x){ return tiles[x].type !== ty; });
-              cleared += 3; sfx("match");
-              renderTray(); renderStats(); checkEnd();
-            }, 240);
-          } else checkEnd();
+            resolveMatch(ty);
+          } else {
+            checkEnd();
+          }
         }
 
         /* ============ props ============ */
@@ -734,12 +1485,12 @@
           document.getElementById("undoLeft").textContent = "剩 " + props.undo + " 次";
           document.getElementById("shuffleLeft").textContent = "剩 " + props.shuffle + " 次";
           document.getElementById("stashLeft").textContent = "剩 " + props.stash + " 次";
-          document.getElementById("undoBtn").disabled = props.undo <= 0 || history.length === 0 || !playing;
-          document.getElementById("shuffleBtn").disabled = props.shuffle <= 0 || !playing;
-          document.getElementById("stashBtn").disabled = props.stash <= 0 || tray.length === 0 || !playing;
+          document.getElementById("undoBtn").disabled = props.undo <= 0 || history.length === 0 || !playing || busy;
+          document.getElementById("shuffleBtn").disabled = props.shuffle <= 0 || !playing || busy;
+          document.getElementById("stashBtn").disabled = props.stash <= 0 || tray.length === 0 || !playing || busy;
         }
         document.getElementById("undoBtn").addEventListener("click", function(){
-          if(props.undo <= 0 || !history.length) return;
+          if(busy || props.undo <= 0 || !history.length) return;
           var h = history.pop();
           var t = tiles[h.tileId];
           t.removed = false;
@@ -751,7 +1502,7 @@
           toast("已撤销一步");
         });
         document.getElementById("shuffleBtn").addEventListener("click", function(){
-          if(props.shuffle <= 0) return;
+          if(busy || props.shuffle <= 0) return;
           var rest = tiles.filter(function(t){ return !t.removed; });
           if(rest.length < 2){ toast("没剩几张牌了，不用洗"); return; }
           var types = shuffleArr(rest.map(function(t){ return t.type; }));
@@ -766,7 +1517,7 @@
           toast("牌面已重新洗牌");
         });
         document.getElementById("stashBtn").addEventListener("click", function(){
-          if(props.stash <= 0 || tray.length === 0) return;
+          if(busy || props.stash <= 0 || tray.length === 0) return;
           var n = Math.min(3, tray.length);
           var out = tray.splice(0, n);
           hold = hold.concat(out);
@@ -809,48 +1560,82 @@
           document.getElementById("dlgEmoji").textContent = win ? (isLast ? "🏆" : "🎉") : "😵";
           document.getElementById("dlgTitle").textContent = win
             ? (isLast ? "21 关全通关！" : "第 " + level + " 关过关！")
-            : "槽位塞满了";
+            : (loseStuck ? "没有可消的牌了" : "槽位塞满了");
           document.getElementById("dlgStars").textContent = win ? ("★★★".slice(0, stars()) + "☆☆☆".slice(0, 3 - stars())) : "";
           document.getElementById("dlgText").textContent = win
             ? (isLast
-              ? "最难的第 21 关也消完了，21 关全部拿下！"
+              ? "最难的第 21 关也消完了，21 关全部拿下！所有关卡都解锁了，选关条里点哪关打哪关。"
               : "本关的牌全消完了。下一关是 " + LEVELS[level].total + " 张牌、叠 " + LEVELS[level].layers + " 层，更难了。")
-            : "第 " + level + " 关就差一点。用木槽下方的移出、撤回、洗牌道具能救回不少残局，再试一次吧。";
+            : (loseStuck
+              ? "牌堆和暂存区都空了，槽里剩下的牌凑不成三个一组，这一局走不下去了。已经打过的关都解锁了，点下面选关条里的关卡接着打，不用从第 1 关重来。"
+              : "第 " + level + " 关没能过。已经打过的关都解锁了，点下面选关条里的关卡接着打，不用从第 1 关重来。");
+          if(win){
+            document.getElementById("dlgText").textContent += winFast
+              ? " ⚡ " + fmt(elapsed) + " 过关，在 " + winLimit + " 秒限时之内！奖励已备好：下一关移出、撤回、洗牌各 +1 次。"
+              : " 本关 " + winLimit + " 秒内过关，下一关道具各 +1 次——这次用了 " + fmt(elapsed) + "，再快一点就拿到了。";
+          }
           document.getElementById("dlgTime").textContent = fmt(elapsed);
           document.getElementById("dlgMoves").textContent = moves;
           document.getElementById("dlgProps").textContent = propsUsed;
-          document.getElementById("dlgNext").textContent = win ? (isLast ? "再战第 21 关" : "下一关 ▶") : "重新挑战";
+          // win and you advance to the next level; anything else
+          // closes the dialog and the player picks any unlocked
+          // level from the strip — never a forced trip back to 1
+          document.getElementById("dlgNext").textContent = win ? (isLast ? "选择关卡" : "下一关 ▶") : "选择关卡";
           mask.classList.add("show");
         }
         function winGame(){
           playing = false; stopTimer();
           elapsed = Math.floor((Date.now() - startedAt) / 1000);
+          // the reward decision: inside the level's time limit banks
+          // +1 on every prop for the next game; outside it, nothing
+          winLimit = clearTimeLimit();
+          winFast = elapsed <= winLimit;
+          if(winFast) pendingBonus = true;
           if(!best[level] || elapsed < best[level]) best[level] = elapsed;
           clearedLevels[level] = true;
           sfx("win");
+          // the celebration gets its own beat — voice, word and
+          // confetti first, the dialog right behind them — instead
+          // of the dialog swallowing the moment at 350ms. The beat
+          // is 0.65s: the player asked for the win to land almost
+          // instantly, celebration and all
+          celebrate();
           renderLevels();
           renderStats();
-          setTimeout(function(){ showDialog(true); }, 350);
+          var seq = gameSeq;
+          setTimeout(function(){ if(seq === gameSeq) showDialog(true); }, 650);
         }
-        function loseGame(){
+        function loseGame(stuck){
           playing = false; stopTimer();
+          loseStuck = !!stuck;
           elapsed = Math.floor((Date.now() - startedAt) / 1000);
-          sfx("lose");
+          playLoseMusic();
           renderProps();
-          setTimeout(function(){ showDialog(false); }, 350);
+          var seq = gameSeq;
+          setTimeout(function(){ if(seq === gameSeq) showDialog(false); }, 350);
         }
 
         /* ============ controls ============ */
-        document.getElementById("restartBtn").addEventListener("click", function(){ newGame(); toast("第 " + level + " 关已重新发牌"); });
-        document.getElementById("newBtn").addEventListener("click", function(){ newGame(); toast("第 " + level + " 关换了一副新牌"); });
-        document.getElementById("dlgRetry").addEventListener("click", function(){ newGame(); });
+        // the end dialog either advances (win, with levels left) or
+        // closes so the player picks an unlocked level from the
+        // strip — losing never sends the run back to level 1
         document.getElementById("dlgNext").addEventListener("click", function(){
-          if(lastWin && level < LEVELS.length) level++;
-          newGame();
+          if(lastWin && level < LEVELS.length){
+            level++;
+            newGame();
+          } else {
+            mask.classList.remove("show");
+            renderLevels();
+            toast("点选关条里已解锁的关卡，选一关接着打");
+          }
         });
         document.getElementById("soundBtn").addEventListener("click", function(){
           soundOn = !soundOn;
           this.textContent = soundOn ? "🔊" : "🔇";
+          if(!soundOn){
+            if(currentVoice){ try{ currentVoice.pause(); }catch(e){} currentVoice = null; }
+            stopLoseMusic();
+          }
           if(soundOn) sfx("tap");
         });
 
